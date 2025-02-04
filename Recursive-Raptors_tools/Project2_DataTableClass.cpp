@@ -1,4 +1,5 @@
 #include <vector> 
+#include <fstream>
 #include <iostream> 
 using namespace std; 
 
@@ -18,6 +19,31 @@ class MyDataTable {
                 }
             }
         }
+
+        void writeToCSV(const std::string& filename) {
+            std::ofstream file(filename);
+            if (!file.is_open()) {
+                std::cerr << "Error opening file!\n"; // error class
+                return;
+            }
+
+            int maxRows = 0;
+            for (const auto& col : table) { // same traversal as printing
+                maxRows = max(maxRows, (int)col.size());
+            }
+
+            for (int row = 0; row < maxRows; ++row) {
+                for (size_t col = 0; col < table.size(); ++col) {
+                    if (row < table[col].size()) {
+                        file << table[col][row];
+                    }
+                    if (col < table.size() - 1) file << ","; // Add commas between elements
+                }
+                file << "\n";
+            }
+            file.close();
+        }
+
 
         ostream& printTable(ostream& os = cout) const {
             int maxRows = 0; // so I know how many empty spaces I need to have everything work 
@@ -63,6 +89,8 @@ int main () {
     test_table.printTable();
     
     cout << test_table; 
+
+    test_table.writeToCSV("testing.csv"); 
 
     return 0; 
 } 
