@@ -118,6 +118,8 @@ int main() {
     cout << endl << "* Howdy! This is Bihao Zhang!" << endl;
     cout << endl << "* Howdy! This is Layan Samandar!" << endl;
     cout << endl << "* Howdy! This is Naveen Jagadeesan!" << endl;
+    cout << endl << "* Howdy! This is Nishi Mishra!" << endl;
+
     return 0;
 
 }
