@@ -114,7 +114,12 @@ int main() {
 
     // Prints out group members' names
     cout << endl << "* Howdy! This is Hassan Niaz!" << endl;
+    cout << endl << "* Howdy! This is Parina Patel!" << endl;
     cout << endl << "* Howdy! This is Bihao Zhang!" << endl;
+    cout << endl << "* Howdy! This is Layan Samandar!" << endl;
+    cout << endl << "* Howdy! This is Naveen Jagadeesan!" << endl;
+    cout << endl << "* Howdy! This is Nishi Mishra!" << endl;
+
     return 0;
 
 }
