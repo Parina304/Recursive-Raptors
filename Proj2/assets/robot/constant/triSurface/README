@@ -1,4 +1,3 @@
-Directory to house tri-surfaces
-
-The Allrun script copies the surface from the $FOAM_TUTORIALS/resources/geometry
-directory
+version https://git-lfs.github.com/spec/v1
+oid sha256:43e7a005300ec424fbee1e3b913cd271936bed6d783d26837d074f25e7991508
+size 124
