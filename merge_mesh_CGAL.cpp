@@ -1,3 +1,4 @@
+// CGAL includes
 #include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 #include <CGAL/Surface_mesh.h>
 #include <CGAL/Polygon_mesh_processing/corefinement.h>
@@ -6,6 +7,8 @@
 #include <CGAL/Aff_transformation_3.h>
 #include <CGAL/IO/polygon_mesh_io.h>
 
+// standard includes
+#include <iostream>
 namespace PMP = CGAL::Polygon_mesh_processing;
 
 typedef CGAL::Exact_predicates_inexact_constructions_kernel Kernel;
@@ -25,8 +28,10 @@ int main() {
     // Triangulate the humanoid if it has quadrilateral faces
     PMP::triangulate_faces(humanoid);
 
-    // Translate the humanoid upwards (assuming Z-axis is up)
-    double displacement = 0.7;  // Adjust based on your models
+    // Translate the humanoid upwards based on user input
+    double displacement = 0.0; 
+    std::cout << "Please enter the desired displacement of humanoid relative to the sphere >> " ;
+    std::cin >> displacement;
     Transformation translate(CGAL::TRANSLATION, Kernel::Vector_3(0, displacement, 0));
     PMP::transform(translate, humanoid);
 
