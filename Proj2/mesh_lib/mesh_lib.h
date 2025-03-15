@@ -1,3 +1,6 @@
+#ifndef _MESH_LIB_H
+#define _MESH_LIB_H
+
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -29,3 +32,5 @@ public:
     bool loadPLY(const std::string& filename);
     void printMeshStats() const;
 };
+
+#endif
