@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <tuple>
 #include <sstream>
 #include <cstdint>
 #include <string>
@@ -17,6 +18,7 @@ struct Vertex {
 // Structure to store a face with vertex indices
 struct Face {
     std::vector<uint32_t> vertexIndices;
+    std::vector<std::tuple<double, double>> materialData; // Example: (materialProp, thickness)
 };
 
 // Mesh class to handle loading, conversion, and writing
