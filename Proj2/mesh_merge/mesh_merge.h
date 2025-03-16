@@ -16,7 +16,7 @@ typedef Kernel::Aff_transformation_3 Transformation;
 
 CGALMesh convertToCGALMesh(const Mesh& customMesh);
 Mesh convertToNormalMesh(const CGALMesh& cgalMesh);
-bool caseInsensitiveCompare(const std::string& a, const std::string& b);
 Mesh meshUnion(const Mesh& mesh1, const Mesh& mesh2);
-
+bool caseInsensitiveCompare(const std::string& a, const std::string& b);
+std::string getInputWithDefault(const std::string& prompt, const std::string& defaultValue);
 #endif
