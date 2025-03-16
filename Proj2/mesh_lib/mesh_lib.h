@@ -7,6 +7,7 @@
 #include <sstream>
 #include <cstdint>
 #include <string>
+#include <cmath>
 
 // Structure to store a vertex with 3D coordinates
 struct Vertex {
@@ -23,14 +24,23 @@ class Mesh {
 private:
     std::vector<Vertex> vertices;
     std::vector<Face> faces;
-    std::vector<float> centroid;
+    Vertex centroid;
 
 public:
+    // mesh i/o functions
     bool loadOBJ(const std::string& filename);
     bool saveOBJ(const std::string& filename) const;
     bool savePLY(const std::string& filename) const;
     bool loadPLY(const std::string& filename);
     void printMeshStats() const;
+    void calc_centroid();
+
+    // mesh operations
+    void translate(float x, float y, float z);
+    void rotate(float rad, int axis);
+    void scale(float scale_fac);
+    void to_origin();
+
 };
 
 #endif
