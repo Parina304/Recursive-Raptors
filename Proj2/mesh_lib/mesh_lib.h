@@ -21,7 +21,7 @@ struct Face {
 
 // Mesh class to handle loading, conversion, and writing
 class Mesh {
-private:
+public:
     std::vector<Vertex> vertices;
     std::vector<Face> faces;
     Vertex centroid;
