@@ -1,6 +1,6 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/mesh_lib.dir/mesh_lib/mesh_lib.cpp.obj"
-  "CMakeFiles/mesh_lib.dir/mesh_lib/mesh_lib.cpp.obj.d"
+  "CMakeFiles/mesh_lib.dir/mesh_lib/mesh_lib.cpp.o"
+  "CMakeFiles/mesh_lib.dir/mesh_lib/mesh_lib.cpp.o.d"
   "libmesh_lib.a"
   "libmesh_lib.pdb"
 )
