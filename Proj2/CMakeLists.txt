@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.12...3.29)
 
 Project(mesh_demo)
 
+
 # Find CGAL
 find_package(CGAL QUIET COMPONENTS)
 if (NOT CGAL_FOUND)
@@ -34,4 +35,3 @@ add_subdirectory("${CMAKE_SOURCE_DIR}/mesh_lib")
 
 # link with mesh_lib mesh_merge and CGAL
 target_link_libraries(mesh_demo PUBLIC mesh_lib mesh_merge CGAL::CGAL)
-	
