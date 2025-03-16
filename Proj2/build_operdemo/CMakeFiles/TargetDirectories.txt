@@ -1,6 +1,0 @@
-/home/heartman/Documents/Proj/ME689/Recursive-Raptors/Proj2/build_operdemo/CMakeFiles/operDemo.dir
-/home/heartman/Documents/Proj/ME689/Recursive-Raptors/Proj2/build_operdemo/CMakeFiles/edit_cache.dir
-/home/heartman/Documents/Proj/ME689/Recursive-Raptors/Proj2/build_operdemo/CMakeFiles/rebuild_cache.dir
-/home/heartman/Documents/Proj/ME689/Recursive-Raptors/Proj2/build_operdemo/src/CMakeFiles/mesh_lib.dir
-/home/heartman/Documents/Proj/ME689/Recursive-Raptors/Proj2/build_operdemo/src/CMakeFiles/edit_cache.dir
-/home/heartman/Documents/Proj/ME689/Recursive-Raptors/Proj2/build_operdemo/src/CMakeFiles/rebuild_cache.dir

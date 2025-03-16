@@ -1,1 +1,1 @@
-add_library(mesh_lib mesh_lib.cpp)
+add_library(mesh_lib mesh_lib.cpp mesh_oper.cpp)
