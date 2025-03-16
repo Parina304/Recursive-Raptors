@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12...3.29)
 
-project(test5)
+project(MeshMerger)
 
 # Find CGAL
 find_package(CGAL QUIET COMPONENTS)
@@ -23,7 +23,7 @@ include_directories(${CMAKE_SOURCE_DIR}/mesh_lib)
 add_library(mesh_lib STATIC mesh_lib/mesh_lib.cpp)
 
 # Add test5 executable
-add_executable(test5 test5.cpp)
+add_executable(MeshMerger MeshMerger.cpp)
 
 # Link test5 with mesh_lib and CGAL
-target_link_libraries(test5 mesh_lib CGAL::CGAL)
+target_link_libraries(MeshMerger mesh_lib CGAL::CGAL)

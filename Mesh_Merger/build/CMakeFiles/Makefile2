@@ -63,12 +63,12 @@ CMAKE_BINARY_DIR = D:\TAMU_2nd_Sem\Computing\Group_Assignments\test\Mesh_Merger\
 
 # The main recursive "all" target.
 all: CMakeFiles/mesh_lib.dir/all
-all: CMakeFiles/test5.dir/all
+all: CMakeFiles/MeshMerger.dir/all
 .PHONY : all
 
 # The main recursive "codegen" target.
 codegen: CMakeFiles/mesh_lib.dir/codegen
-codegen: CMakeFiles/test5.dir/codegen
+codegen: CMakeFiles/MeshMerger.dir/codegen
 .PHONY : codegen
 
 # The main recursive "preinstall" target.
@@ -77,7 +77,7 @@ preinstall:
 
 # The main recursive "clean" target.
 clean: CMakeFiles/mesh_lib.dir/clean
-clean: CMakeFiles/test5.dir/clean
+clean: CMakeFiles/MeshMerger.dir/clean
 .PHONY : clean
 
 #=============================================================================
@@ -87,7 +87,7 @@ clean: CMakeFiles/test5.dir/clean
 CMakeFiles/mesh_lib.dir/all:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\mesh_lib.dir\build.make CMakeFiles/mesh_lib.dir/depend
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\mesh_lib.dir\build.make CMakeFiles/mesh_lib.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=D:\TAMU_2nd_Sem\Computing\Group_Assignments\test\Mesh_Merger\build\CMakeFiles --progress-num=1,2 "Built target mesh_lib"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=D:\TAMU_2nd_Sem\Computing\Group_Assignments\test\Mesh_Merger\build\CMakeFiles --progress-num=3,4 "Built target mesh_lib"
 .PHONY : CMakeFiles/mesh_lib.dir/all
 
 # Build rule for subdir invocation for target.
@@ -104,7 +104,7 @@ mesh_lib: CMakeFiles/mesh_lib.dir/rule
 # codegen rule for target.
 CMakeFiles/mesh_lib.dir/codegen:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\mesh_lib.dir\build.make CMakeFiles/mesh_lib.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=D:\TAMU_2nd_Sem\Computing\Group_Assignments\test\Mesh_Merger\build\CMakeFiles --progress-num=1,2 "Finished codegen for target mesh_lib"
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=D:\TAMU_2nd_Sem\Computing\Group_Assignments\test\Mesh_Merger\build\CMakeFiles --progress-num=3,4 "Finished codegen for target mesh_lib"
 .PHONY : CMakeFiles/mesh_lib.dir/codegen
 
 # clean rule for target.
@@ -113,36 +113,36 @@ CMakeFiles/mesh_lib.dir/clean:
 .PHONY : CMakeFiles/mesh_lib.dir/clean
 
 #=============================================================================
-# Target rules for target CMakeFiles/test5.dir
+# Target rules for target CMakeFiles/MeshMerger.dir
 
 # All Build rule for target.
-CMakeFiles/test5.dir/all: CMakeFiles/mesh_lib.dir/all
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\test5.dir\build.make CMakeFiles/test5.dir/depend
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\test5.dir\build.make CMakeFiles/test5.dir/build
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=D:\TAMU_2nd_Sem\Computing\Group_Assignments\test\Mesh_Merger\build\CMakeFiles --progress-num=3,4 "Built target test5"
-.PHONY : CMakeFiles/test5.dir/all
+CMakeFiles/MeshMerger.dir/all: CMakeFiles/mesh_lib.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\MeshMerger.dir\build.make CMakeFiles/MeshMerger.dir/depend
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\MeshMerger.dir\build.make CMakeFiles/MeshMerger.dir/build
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=D:\TAMU_2nd_Sem\Computing\Group_Assignments\test\Mesh_Merger\build\CMakeFiles --progress-num=1,2 "Built target MeshMerger"
+.PHONY : CMakeFiles/MeshMerger.dir/all
 
 # Build rule for subdir invocation for target.
-CMakeFiles/test5.dir/rule: cmake_check_build_system
+CMakeFiles/MeshMerger.dir/rule: cmake_check_build_system
 	$(CMAKE_COMMAND) -E cmake_progress_start D:\TAMU_2nd_Sem\Computing\Group_Assignments\test\Mesh_Merger\build\CMakeFiles 4
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 CMakeFiles/test5.dir/all
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 CMakeFiles/MeshMerger.dir/all
 	$(CMAKE_COMMAND) -E cmake_progress_start D:\TAMU_2nd_Sem\Computing\Group_Assignments\test\Mesh_Merger\build\CMakeFiles 0
-.PHONY : CMakeFiles/test5.dir/rule
+.PHONY : CMakeFiles/MeshMerger.dir/rule
 
 # Convenience name for target.
-test5: CMakeFiles/test5.dir/rule
-.PHONY : test5
+MeshMerger: CMakeFiles/MeshMerger.dir/rule
+.PHONY : MeshMerger
 
 # codegen rule for target.
-CMakeFiles/test5.dir/codegen:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\test5.dir\build.make CMakeFiles/test5.dir/codegen
-	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=D:\TAMU_2nd_Sem\Computing\Group_Assignments\test\Mesh_Merger\build\CMakeFiles --progress-num=3,4 "Finished codegen for target test5"
-.PHONY : CMakeFiles/test5.dir/codegen
+CMakeFiles/MeshMerger.dir/codegen:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\MeshMerger.dir\build.make CMakeFiles/MeshMerger.dir/codegen
+	@$(CMAKE_COMMAND) -E cmake_echo_color "--switch=$(COLOR)" --progress-dir=D:\TAMU_2nd_Sem\Computing\Group_Assignments\test\Mesh_Merger\build\CMakeFiles --progress-num=1,2 "Finished codegen for target MeshMerger"
+.PHONY : CMakeFiles/MeshMerger.dir/codegen
 
 # clean rule for target.
-CMakeFiles/test5.dir/clean:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\test5.dir\build.make CMakeFiles/test5.dir/clean
-.PHONY : CMakeFiles/test5.dir/clean
+CMakeFiles/MeshMerger.dir/clean:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\MeshMerger.dir\build.make CMakeFiles/MeshMerger.dir/clean
+.PHONY : CMakeFiles/MeshMerger.dir/clean
 
 #=============================================================================
 # Special targets to cleanup operation of make.

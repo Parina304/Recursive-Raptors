@@ -129,17 +129,41 @@ mesh_lib/fast:
 .PHONY : mesh_lib/fast
 
 #=============================================================================
-# Target rules for targets named test5
+# Target rules for targets named MeshMerger
 
 # Build rule for target.
-test5: cmake_check_build_system
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 test5
-.PHONY : test5
+MeshMerger: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\Makefile2 MeshMerger
+.PHONY : MeshMerger
 
 # fast build rule for target.
-test5/fast:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\test5.dir\build.make CMakeFiles/test5.dir/build
-.PHONY : test5/fast
+MeshMerger/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\MeshMerger.dir\build.make CMakeFiles/MeshMerger.dir/build
+.PHONY : MeshMerger/fast
+
+MeshMerger.obj: MeshMerger.cpp.obj
+.PHONY : MeshMerger.obj
+
+# target to build an object file
+MeshMerger.cpp.obj:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\MeshMerger.dir\build.make CMakeFiles/MeshMerger.dir/MeshMerger.cpp.obj
+.PHONY : MeshMerger.cpp.obj
+
+MeshMerger.i: MeshMerger.cpp.i
+.PHONY : MeshMerger.i
+
+# target to preprocess a source file
+MeshMerger.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\MeshMerger.dir\build.make CMakeFiles/MeshMerger.dir/MeshMerger.cpp.i
+.PHONY : MeshMerger.cpp.i
+
+MeshMerger.s: MeshMerger.cpp.s
+.PHONY : MeshMerger.s
+
+# target to generate assembly for a file
+MeshMerger.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles\MeshMerger.dir\build.make CMakeFiles/MeshMerger.dir/MeshMerger.cpp.s
+.PHONY : MeshMerger.cpp.s
 
 mesh_lib/mesh_lib.obj: mesh_lib/mesh_lib.cpp.obj
 .PHONY : mesh_lib/mesh_lib.obj
@@ -165,30 +189,6 @@ mesh_lib/mesh_lib.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles\mesh_lib.dir\build.make CMakeFiles/mesh_lib.dir/mesh_lib/mesh_lib.cpp.s
 .PHONY : mesh_lib/mesh_lib.cpp.s
 
-test5.obj: test5.cpp.obj
-.PHONY : test5.obj
-
-# target to build an object file
-test5.cpp.obj:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\test5.dir\build.make CMakeFiles/test5.dir/test5.cpp.obj
-.PHONY : test5.cpp.obj
-
-test5.i: test5.cpp.i
-.PHONY : test5.i
-
-# target to preprocess a source file
-test5.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\test5.dir\build.make CMakeFiles/test5.dir/test5.cpp.i
-.PHONY : test5.cpp.i
-
-test5.s: test5.cpp.s
-.PHONY : test5.s
-
-# target to generate assembly for a file
-test5.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles\test5.dir\build.make CMakeFiles/test5.dir/test5.cpp.s
-.PHONY : test5.cpp.s
-
 # Help Target
 help:
 	@echo The following are some of the valid targets for this Makefile:
@@ -197,14 +197,14 @@ help:
 	@echo ... depend
 	@echo ... edit_cache
 	@echo ... rebuild_cache
+	@echo ... MeshMerger
 	@echo ... mesh_lib
-	@echo ... test5
+	@echo ... MeshMerger.obj
+	@echo ... MeshMerger.i
+	@echo ... MeshMerger.s
 	@echo ... mesh_lib/mesh_lib.obj
 	@echo ... mesh_lib/mesh_lib.i
 	@echo ... mesh_lib/mesh_lib.s
-	@echo ... test5.obj
-	@echo ... test5.i
-	@echo ... test5.s
 .PHONY : help
 
 
