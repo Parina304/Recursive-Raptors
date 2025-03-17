@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.12...3.29)
 
 Project(mesh_demo)
 Project(mesh_demo_union)
+Project(mesh_demo_union)
 
 
 # Find CGAL
@@ -22,6 +23,7 @@ endif()
 # add executable
 add_executable(mesh_demo mesh_demo.cpp)
 add_executable(mesh_demo_union mesh_demo_union.cpp)
+add_executable(mesh_demo_vol mesh_demo_vol.cpp)
 
 # Include directories (Add mesh_lib folder to search path for headers)
 # include_directories(${CMAKE_SOURCE_DIR}/mesh_lib)
@@ -38,3 +40,4 @@ add_subdirectory("${CMAKE_SOURCE_DIR}/mesh_lib")
 # link with mesh_lib mesh_merge and CGAL
 target_link_libraries(mesh_demo PUBLIC mesh_lib mesh_merge CGAL::CGAL)
 target_link_libraries(mesh_demo_union PUBLIC mesh_lib mesh_merge CGAL::CGAL)
+target_link_libraries(mesh_demo_vol PUBLIC mesh_lib mesh_merge CGAL::CGAL)
