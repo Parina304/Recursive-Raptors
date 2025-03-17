@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <string>
 #include <cmath>
+#include <regex>
 
 // Structure to store a vertex with 3D coordinates
 struct Vertex {
@@ -43,6 +44,14 @@ public:
     void scale(float scale_fac);
     void to_origin();
 
+};
+
+class VolMesh : public Mesh {
+    
+public:
+    bool parsePoints(const std::string& filename);
+    bool parseCells(const std::string& filename);
+    bool writeVTK(const std::string& filename) const;
 };
 
 #endif
