@@ -7,10 +7,12 @@
 
 using namespace std;
 
+//define the points
 struct Point {
     double x, y, z;
 };
 
+//vector to hold the plane values
 using Cell = vector<int>;
 
 // Function to parse OpenFOAM points file
@@ -19,6 +21,7 @@ vector<Point> parsePoints(const string& filename) {
     vector<Point> points;
     string line;
 
+    //check if file can be opened; if not throw out error message
     if (!file) {
         cerr << "Error opening file: " << filename << endl;
         return points;
@@ -31,7 +34,10 @@ vector<Point> parsePoints(const string& filename) {
         }
     }
 
+    //converts the strings to ints
     int numPoints = stoi(line);
+
+    //prints out the number of points found
     cout << "Detected " << numPoints << " points." << endl;
 
     // Skip the next line (usually "(" in OpenFOAM)
@@ -42,11 +48,12 @@ vector<Point> parsePoints(const string& filename) {
         getline(file, line);
         line = regex_replace(line, regex("[()]"), ""); // Remove parentheses
 
+        //reads in the points and adds to points vector
         istringstream ss(line);
         double x, y, z;
         if (ss >> x >> y >> z) {
             points.push_back({x, y, z});
-        } else {
+        } else { //check for incorrect point format
             cerr << "Warning: Invalid point format at line " << i + 1 << ": " << line << endl;
         }
     }
@@ -55,13 +62,13 @@ vector<Point> parsePoints(const string& filename) {
     return points;
 }
 
-// Function to parse OpenFOAM faces/volume file
+// Function to parse OpenFOAM faces file
 vector<Cell> parseCells(const string& filename) {
     ifstream file(filename);
-    vector<Cell> cells;
+    vector<Cell> cells; //stores face values
     string line;
 
-    if (!file) {
+    if (!file) { //check for error opening the file
         cerr << "Error opening file: " << filename << endl;
         return cells;
     }
@@ -73,8 +80,8 @@ vector<Cell> parseCells(const string& filename) {
         }
     }
 
-    int numCells = stoi(line);
-    cout << "Detected " << numCells << " cells." << endl;
+    int numCells = stoi(line); //convert string to int
+    cout << "Detected " << numCells << " cells." << endl; //prints out number of planes
 
     // Skip the next line (usually "(" in OpenFOAM)
     getline(file, line);
@@ -97,7 +104,7 @@ vector<Cell> parseCells(const string& filename) {
                 cell.push_back(vertexIndex - 1); // Convert to zero-based index
             }
 
-            if (!cell.empty()) {
+            if (!cell.empty()) { 
                 cells.push_back(cell);
             } else {
                 cerr << "Warning: Empty cell line: " << line << endl;
@@ -123,7 +130,7 @@ void writeVTK(const string& filename, const vector<Point>& points, const vector<
     vtkFile << "# vtk DataFile Version 2.0\n";
     vtkFile << "OpenFOAM Volume Mesh\n";
     vtkFile << "ASCII\n";
-    vtkFile << "DATASET POLYDATA\n";
+    vtkFile << "DATASET POLYDATA\n"; //using POLYDATA dataset because using only points and faces
 
     // Write points
     vtkFile << "POINTS " << points.size() << " float\n";
@@ -147,7 +154,6 @@ void writeVTK(const string& filename, const vector<Point>& points, const vector<
         }
         vtkFile << "\n";
     }
-
 
     vtkFile.close();
     cout << "VTK file saved: " << filename << endl;
