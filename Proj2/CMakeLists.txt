@@ -4,7 +4,9 @@ Project(mesh_demo)
 Project(mesh_demo_union)
 Project(mesh_demo_union)
 Project(vizmesh)
-
+Project(VolMesh)
+Project(VTKtoOBJ)
+Project(VolMesh_old)
 
 # Find CGAL
 find_package(CGAL QUIET COMPONENTS)
@@ -30,6 +32,9 @@ add_executable(mesh_demo mesh_demo.cpp)
 add_executable(mesh_demo_union mesh_demo_union.cpp)
 add_executable(mesh_demo_vol mesh_demo_vol.cpp)
 add_executable(vizmesh vizmesh.cpp)
+add_executable(VolMesh VolMesh.cpp)
+add_executable(VTKtoOBJ VTKtoOBJ.cpp)
+add_executable(VolMesh_old VolMesh_old.cpp)
 
 # Include directories (Add mesh_lib folder to search path for headers)
 # include_directories(${CMAKE_SOURCE_DIR}/mesh_lib)
