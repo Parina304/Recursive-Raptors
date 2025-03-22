@@ -51,6 +51,7 @@ class VolMesh : public Mesh {
 public:
     bool parsePoints(const std::string& filename);
     bool parseCells(const std::string& filename);
+    bool parseVTK(const std::string& filename);
     bool writeVTK(const std::string& filename) const;
 };
 
