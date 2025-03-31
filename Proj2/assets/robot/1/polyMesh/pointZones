@@ -1,3 +1,22 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:84a171c6b48c99534647a3958fb0930bf699d5ea9d97c3bf24344ba5efb0f061
-size 914
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v1706                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      binary;
+    class       regIOobject;
+    arch        "LSB;label=32;scalar=64";
+    location    "1/polyMesh";
+    object      pointZones;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+0
+()
+
+// ************************************************************************* //

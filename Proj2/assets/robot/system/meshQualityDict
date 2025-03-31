@@ -1,3 +1,24 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:2b93a1293c162aab03ac53b3e789312850a54d57351b638ec80be1d90202d0e1
-size 985
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  plus                                  |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      meshQualityDict;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+// Include defaults parameters from master dictionary
+#includeEtc "caseDicts/meshQualityDict"
+
+//- minFaceWeight (0 -> 0.5)
+minFaceWeight 0.02;
+
+
+// ************************************************************************* //

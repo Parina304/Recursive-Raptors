@@ -1,3 +1,17 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:d70ab9e7d879c82978f2710354ee33fb60cd71d9938d14dc3bba879781bea6e2
-size 428
+// -*- C++ -*-
+// Minimal example of using the ensight write function object.
+// Many more options possible
+ensightWrite
+{
+    type    ensightWrite;
+    libs    ("libutilityFunctionObjects.so");
+    log     true;
+
+    // Fields to output (words or regex)
+    fields  (U p "(k|epsilon|omega)");
+
+    writeControl  writeTime;
+    writeInterval 1;
+}
+
+// ************************************************************************* //

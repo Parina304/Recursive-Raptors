@@ -1,3 +1,51 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:604b4be21e52d8d293b5c02823d4ec7db9a0d267dfeb7347d0e14ebf007afc7f
-size 1353
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  plus                                  |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       volScalarField;
+    object      p;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+#include        "include/initialConditions"
+
+dimensions      [0 2 -2 0 0 0 0];
+
+internalField   uniform $pressure;
+
+boundaryField
+{
+    #includeEtc "caseDicts/setConstraintTypes"
+
+    inlet
+    {
+        type            zeroGradient;
+    }
+
+    outlet
+    {
+        type            fixedValue;
+        value           $internalField;
+    }
+
+    lowerWall
+    {
+        type            zeroGradient;
+    }
+
+    motorBikeGroup
+    {
+        type            zeroGradient;
+    }
+
+    #include "include/frontBackUpperPatches"
+}
+
+// ************************************************************************* //

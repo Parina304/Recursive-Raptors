@@ -1,3 +1,29 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:13f9a41ff05876737de1f57fa06ba2b06c4f7fcd67f65d13625f5ea776be1332
-size 1037
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  v1706                                 |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       polyBoundaryMesh;
+    location    "constant/polyMesh";
+    object      boundary;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+1
+(
+    defaultFaces
+    {
+        type            empty;
+        inGroups        1(empty);
+        nFaces          1200;
+        startFace       17400;
+    }
+)
+
+// ************************************************************************* //

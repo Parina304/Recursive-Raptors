@@ -1,3 +1,37 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:1ab3f4e0891dcc84af6aabcbe61651763749fcca8a06566333d644be888c72c1
-size 1706
+{
+  "Version": 1,
+  "WorkspaceRootPath": "D:\\MEEN\\Semester_2\\Applied_Computing_Concepts\\Projects\\Project_2\\Visualization\\Visualization_Main\\Viz_Mesh\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{714CB829-166B-46E1-8BC5-42C84E252590}|Viz_Mesh.vcxproj|D:\\MEEN\\Semester_2\\Applied_Computing_Concepts\\Projects\\Project_2\\Visualization\\Visualization_Main\\Viz_Mesh\\Viz_Mesh.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}",
+      "RelativeMoniker": "D:0:0:{714CB829-166B-46E1-8BC5-42C84E252590}|Viz_Mesh.vcxproj|solutionrelative:Viz_Mesh.cpp||{D0E1A5C6-B359-4E41-9B60-3365922C2A22}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Viz_Mesh.cpp",
+              "DocumentMoniker": "D:\\MEEN\\Semester_2\\Applied_Computing_Concepts\\Projects\\Project_2\\Visualization\\Visualization_Main\\Viz_Mesh\\Viz_Mesh.cpp",
+              "RelativeDocumentMoniker": "Viz_Mesh.cpp",
+              "ToolTip": "D:\\MEEN\\Semester_2\\Applied_Computing_Concepts\\Projects\\Project_2\\Visualization\\Visualization_Main\\Viz_Mesh\\Viz_Mesh.cpp",
+              "RelativeToolTip": "Viz_Mesh.cpp",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABQAAAAZAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000677|",
+              "WhenOpened": "2025-03-16T06:26:14.088Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

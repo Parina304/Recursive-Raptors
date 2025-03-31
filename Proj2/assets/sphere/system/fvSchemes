@@ -1,3 +1,37 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:13fc054f364bce6e44e20528db7e070162e01a655e34a2466db410c5aff58e70
-size 970
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  plus                                  |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      fvSchemes;
+}
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+ddtSchemes
+{}
+
+gradSchemes
+{}
+
+divSchemes
+{}
+
+laplacianSchemes
+{}
+
+interpolationSchemes
+{}
+
+snGradSchemes
+{}
+
+
+// ************************************************************************* //
