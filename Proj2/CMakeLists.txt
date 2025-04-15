@@ -22,6 +22,7 @@ if (NOT Boost_FOUND)
 	return()
 endif()
 
+# find GLUT
 find_package(OpenGL REQUIRED)
 find_package(GLUT REQUIRED)
 include_directories( ${OPENGL_INCLUDE_DIRS}  ${GLUT_INCLUDE_DIRS} )
