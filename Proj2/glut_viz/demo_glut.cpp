@@ -1,6 +1,12 @@
+#include <iostream>
 #include <GL/freeglut.h>
 using namespace std;
 bool flag_fullscreen = false;
+
+#define RED 1
+#define GREEN 2
+#define BLUE 3
+#define ORANGE 4
 
 void render_cb(void){
 
@@ -43,6 +49,24 @@ void keyboard_cb(unsigned char key, int x, int y){
     default:
         break;
     }
+}
+
+void ProcessMenuEvents(int option){
+    
+    cout << option << endl;
+}
+
+void CreateMenu(){
+    int menu;
+    menu = glutCreateMenu(ProcessMenuEvents);
+
+    glutAddMenuEntry("red", RED);
+    glutAddMenuEntry("green", GREEN);
+    glutAddMenuEntry("blue", BLUE);
+    glutAddMenuEntry("orange", ORANGE);
+
+    glutAttachMenu(GLUT_RIGHT_BUTTON);
+
 }
 
 int main(void){

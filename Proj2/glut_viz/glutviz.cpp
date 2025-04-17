@@ -13,73 +13,18 @@
 #include <fstream>
 #include <sstream>
 
-// Globals for OBJ files
-std::vector<float> vertices1;
-std::vector<int> faces1;
-std::vector<float> vertices2;
-std::vector<int> faces2;
-
 bool loadSecondFile = false;  // Flag to check if user wants to load 2 files
 
 float angleX = 0.0f, angleY = 0.0f, zoom = 1.0f, panX = 0.0f, panY = 0.0f;
 float cutPlaneZ = 0.0f;
 float minZ = 0.0f, maxZ = 0.0f;
+int window_width = 1600, window_height = 900;
+// Globals for mouse interaction
+bool flag_left_mouse_pressed = false;
+bool flag_right_mouse_pressed = false;
+int last_mouse_x = 0, last_mouse_y = 0;
+
 Mesh humanoid;
-
-std::string getFileFromUser(const std::string& promptMessage) {
-    std::string filePath;
-    std::cout << promptMessage;
-    std::getline(std::cin, filePath);
-    return filePath;
-}
-
-int getNumberOfFiles() {
-    std::string input;
-    int count = 0;
-    while (true) {
-        std::cout << "How many OBJ files do you want to load (1 or 2)? ";
-        std::getline(std::cin, input);  // Read as string to handle any input
-
-        if (input == "1" || input == "2") {
-            count = std::stoi(input);  // Safe to convert now
-            break;  // Valid input, break loop
-        }
-        else {
-            std::cout << "Invalid input. Please enter only 1 or 2.\n";
-        }
-    }
-    return count;
-}
-
-
-void loadOBJ(const char* filename, std::vector<float>& vertices, std::vector<int>& faces) {
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        std::cerr << "Cannot open file: " << filename << std::endl;
-        return;
-    }
-    std::string line;
-    while (std::getline(file, line)) {
-        std::istringstream iss(line);
-        if (line.substr(0, 2) == "v ") {
-            float x, y, z;
-            iss.ignore(2);
-            iss >> x >> y >> z;
-            vertices.push_back(x);
-            vertices.push_back(y);
-            vertices.push_back(z);
-        }
-        else if (line.substr(0, 2) == "f ") {
-            int a, b, c;
-            iss.ignore(2);
-            iss >> a >> b >> c;
-            faces.push_back(a - 1);
-            faces.push_back(b - 1);
-            faces.push_back(c - 1);
-        }
-    }
-    file.close();
-}
 
 void computeZBounds(const std::vector<float>& vertices) {
     if (vertices.empty()) return;
@@ -132,10 +77,6 @@ void DrawMesh(const Mesh& m, float translateX = 0.0f){
     
     for (const auto& f: m.faces) {
         glBegin(GL_POLYGON);
-        // int idx1 = faces[i] * 3;
-        // int idx2 = faces[i + 1] * 3;
-        // int idx3 = faces[i + 2] * 3;
-        // if (vertices[idx1 + 2] < cutPlaneZ && vertices[idx2 + 2] < cutPlaneZ && vertices[idx3 + 2] < cutPlaneZ) continue;
         for (const auto& idx: f.vertexIndices){
             glVertex3f(m.vertices[idx].x, m.vertices[idx].y, m.vertices[idx].z);
         }
@@ -158,7 +99,7 @@ void display() {
     DrawMesh(humanoid);
     if (loadSecondFile) {
         float color2[3] = { 1.0f, 0.0f, 1.0f };
-        drawMesh(vertices2, faces2, color2, 1.5f);
+        // drawMesh(vertices2, faces2, color2, 1.5f);
     }
     glutSwapBuffers();
 }
@@ -174,7 +115,7 @@ void keyboard(unsigned char key, int x, int y) {
         break;
     case 'w': angleX -= 5.0f; break;
     case 's': angleX += 5.0f; break;
-    case 'a': angleY -= 5.0f; break;
+    case 'a': angleY -= 5.0f; break; 
     case 'd': angleY += 5.0f; break;
     case '+': zoom += 0.1f; break;
     case '-': zoom -= 0.1f; break;
@@ -190,6 +131,20 @@ void keyboard(unsigned char key, int x, int y) {
     case 'q': exit(0);
     }
     glutPostRedisplay();
+}
+
+void reshape(int width, int height) {
+    // Prevent division by zero
+    if (height == 0) height = 1;
+
+    // Update the viewport to cover the new window dimensions
+    glViewport(0, 0, width, height);
+
+    // Update the projection matrix
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(45.0, (double)width / (double)height, 1.0, 100.0);
+    glMatrixMode(GL_MODELVIEW);
 }
 
 void initOpenGL() {
@@ -212,16 +167,12 @@ void initOpenGL() {
 }
 
 
-// Globals for mouse interaction
-bool isLeftMousePressed = false;
-bool isRightMousePressed = false;
-int lastMouseX = 0, lastMouseY = 0;
 
 void mouse(int button, int state, int x, int y) {
     if (button == GLUT_LEFT_BUTTON) {
-        isLeftMousePressed = (state == GLUT_DOWN);
+        flag_left_mouse_pressed = (state == GLUT_DOWN);
     } else if (button == GLUT_RIGHT_BUTTON) {
-        isRightMousePressed = (state == GLUT_DOWN);
+        flag_right_mouse_pressed = (state == GLUT_DOWN);
     } else if (button == 3){
     // std::cout << "scrolled\n";
         if(state == GLUT_DOWN){
@@ -230,28 +181,28 @@ void mouse(int button, int state, int x, int y) {
     } else if (button == 4 && state == GLUT_DOWN){
         zoom -= .1f;
     }
-    lastMouseX = x;
-    lastMouseY = y;
+    last_mouse_x = x;
+    last_mouse_y = y;
 
     glutPostRedisplay();
 }
 
 void motion(int x, int y) {
-    int dx = x - lastMouseX;
-    int dy = y - lastMouseY;
+    int dx = x - last_mouse_x;
+    int dy = y - last_mouse_y;
 
-    if (isLeftMousePressed) {
+    if (flag_left_mouse_pressed) {
         // Rotate the model
         angleX += dy * 0.5f;
         angleY += dx * 0.5f;
-    } else if (isRightMousePressed) {
+    } else if (flag_right_mouse_pressed) {
         // Pan the model
         panX += dx * 0.01f;
         panY -= dy * 0.01f;
     }
 
-    lastMouseX = x;
-    lastMouseY = y;
+    last_mouse_x = x;
+    last_mouse_y = y;
 
     glutPostRedisplay();
 }
@@ -265,7 +216,8 @@ int main(int argc, char** argv) {
     std::string file1 = "../../assets/obj/humanoid_robot.obj";
     // loadOBJ(file1.c_str(), vertices1, faces1);
     humanoid.loadOBJ(file1);
-    computeZBounds(vertices1);
+    humanoid.printMeshStats();
+    // computeZBounds(vertices1);
     // if (fileCount == 2) {
     //     loadSecondFile = true;
     //     std::string file2 = getFileFromUser("Enter path to second OBJ file: ");
@@ -273,11 +225,12 @@ int main(int argc, char** argv) {
     // }
     glutInit(&fake_argc, fake_argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-    glutInitWindowSize(1024, 800);
+    glutInitWindowSize(window_width, window_height);
     
     glutCreateWindow("OBJ Viewer");
     initOpenGL();
     glutDisplayFunc(display);
+    glutReshapeFunc(reshape);
     glutKeyboardFunc(keyboard);
     glutMouseFunc(mouse);
     glutMotionFunc(motion);

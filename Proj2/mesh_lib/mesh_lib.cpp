@@ -1,5 +1,14 @@
 #include "mesh_lib.h"
 
+Mesh::Mesh(){
+    x_min = std::numeric_limits<float>::max();
+    y_min = std::numeric_limits<float>::max();
+    z_min = std::numeric_limits<float>::max();
+    x_max = std::numeric_limits<float>::min();
+    y_max = std::numeric_limits<float>::min();
+    z_max = std::numeric_limits<float>::min();
+}
+
 // Reads an OBJ file and stores its mesh data efficiently
 bool Mesh::loadOBJ(const std::string& filename) {
     std::ifstream file(filename);
@@ -32,7 +41,9 @@ bool Mesh::loadOBJ(const std::string& filename) {
     }
 
     file.close();
-    calc_centroid();
+    CalcStats();
+    CalcFaceNormal();
+
     return true;
 }
 
@@ -140,7 +151,8 @@ bool Mesh::loadPLY(const std::string& filename) {
     file.close();
     
     // Calculates centroid
-    calc_centroid();
+    CalcStats();
+    CalcFaceNormal();
 
     return true;
 }
@@ -151,14 +163,24 @@ void Mesh::printMeshStats() const {
     std::cout << "  - Vertices: " << vertices.size() << "\n";
     std::cout << "  - Faces: " << faces.size() << "\n";
     std::cout << "  - Centroid: x: " << centroid.x << " y: " << centroid.y << " z: " << centroid.z << "\n";
+    std::cout << "  - Bounds:\n";
+    std::cout << "      x_min: " << x_min << ", x_max: " << x_max << "\n";
+    std::cout << "      y_min: " << y_min << ", y_max: " << y_max << "\n";
+    std::cout << "      z_min: " << z_min << ", z_max: " << z_max << "\n";
 }
 
-void Mesh::calc_centroid(){
+void Mesh::CalcStats(){
     float cx = 0, cy = 0, cz = 0;
     for(const auto& v: vertices){
         cx += v.x;
         cy += v.y;
         cz += v.z;
+        x_min = std::min(x_min, v.x);
+        y_min = std::min(y_min, v.y);
+        z_min = std::min(z_min, v.z);
+        x_max = std::max(x_max, v.x);
+        y_max = std::max(y_max, v.y);
+        z_max = std::max(z_max, v.z);
     }
     centroid.x = cx / vertices.size();
     centroid.y = cy / vertices.size();
