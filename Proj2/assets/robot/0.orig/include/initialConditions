@@ -1,3 +1,14 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:d87f28a6dd8960383b0b4242b3097cd12e6b2a94569d640ccda860c5ae5f0c2d
-size 751
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  plus                                  |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+
+flowVelocity         (20 0 0);
+pressure             0;
+turbulentKE          0.24;
+turbulentOmega       1.78;
+
+// ************************************************************************* //

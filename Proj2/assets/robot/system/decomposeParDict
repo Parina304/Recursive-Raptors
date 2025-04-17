@@ -1,3 +1,42 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:281fbdd7b3f6d356787ae63a4a8c176ecb5307b16ca0629595ef3369a687a972
-size 1163
+/*--------------------------------*- C++ -*----------------------------------*\
+| =========                 |                                                 |
+| \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+|  \\    /   O peration     | Version:  plus                                  |
+|   \\  /    A nd           | Web:      www.OpenFOAM.com                      |
+|    \\/     M anipulation  |                                                 |
+\*---------------------------------------------------------------------------*/
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      decomposeParDict;
+}
+
+// * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * //
+
+numberOfSubdomains 6;
+
+method          hierarchical;
+// method          ptscotch;
+
+simpleCoeffs
+{
+    n               (6 1 1);
+    delta           0.001;
+}
+
+hierarchicalCoeffs
+{
+    n               (3 2 1);
+    delta           0.001;
+    order           xyz;
+}
+
+manualCoeffs
+{
+    dataFile        "cellDecomposition";
+}
+
+
+// ************************************************************************* //
