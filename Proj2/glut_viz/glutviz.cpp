@@ -82,18 +82,7 @@ void DrawMesh(const Mesh& m, float translateX = 0.0f){
     xt::xtensor<double, 1> color_idx;
     
     for (const auto& f: m.faces) {
-        z_mean = 0;
-        for (const auto& idx: f.vertexIndices){
-            z_mean += m.vertices[idx].y;
-        }
-        z_mean /= f.vertexIndices.size();
-        color_idx = {z_mean};
-        
-        auto c = cppcolormap::as_colors(color_idx, cppcolormap::jet(), m.y_min, m.y_max);
-        float r = static_cast<float>(c(0, 0));
-        float g = static_cast<float>(c(0, 1));
-        float b = static_cast<float>(c(0, 2));
-        glColor3f(r, g, b);
+        glColor3f(f.r, f.g, f.b);
         // std::cout << color_idx << " rgb: " << r << g << b;
         glBegin(GL_POLYGON);
         // glNormal3f(m.face_normals[idx])
@@ -112,7 +101,7 @@ void CalcMeshColors(Mesh& m){
     xt::xtensor<double, 1> color_idx;
     // Color c;
 
-    for (const auto& f: m.faces){
+    for (auto& f: m.faces){
         y_mean = 0;
         for (const auto& idx: f.vertexIndices){
             y_mean += m.vertices[idx].y;
@@ -121,11 +110,11 @@ void CalcMeshColors(Mesh& m){
 
         color_idx = {y_mean};
         auto c = cppcolormap::as_colors(color_idx, cppcolormap::jet(), m.y_min, m.y_max);
-        float r = static_cast<float>(c(0, 0));
-        float g = static_cast<float>(c(0, 1));
-        float b = static_cast<float>(c(0, 2));
-        auto cc = Color(r, g, b);
-        m.vertices_color.push_back(cc);
+        f.r = static_cast<float>(c(0, 0));
+        f.g = static_cast<float>(c(0, 1));
+        f.b = static_cast<float>(c(0, 2));
+        // auto cc = Color(r, g, b);
+        // m.face_color.push_back(cc);
     }
 }
 
@@ -198,8 +187,8 @@ void initOpenGL() {
 
     // Set light properties
     GLfloat ambient[] = { 0.2f, 0.2f, 0.2f, 1.0f };  // Ambient light
-    GLfloat diffuse[] = { 0.5f, 0.5f, 0.5f, 1.0f };  // Diffuse light
-    GLfloat specular[] = { .5f, .5f, .5f, 1.0f }; // Specular light
+    GLfloat diffuse[] = { 0.3f, 0.3f, 0.3f, 1.0f };  // Diffuse light
+    GLfloat specular[] = { .3f, .3f, .3f, 1.0f }; // Specular light
     GLfloat position[] = { .0f, .0f, 1.0f, 0.0f }; // Light position
 
     glLightfv(GL_LIGHT0, GL_AMBIENT, ambient);
@@ -212,8 +201,8 @@ void initOpenGL() {
     glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
 
     // Set material properties
-    GLfloat mat_specular[] = { .5f, .5f, .5f, 1.0f };
-    GLfloat mat_shininess[] = { .5f }; // Shininess factor
+    GLfloat mat_specular[] = { .2f, .2f, .2f, 1.0f };
+    GLfloat mat_shininess[] = {.0f }; // Shininess factor
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
 
