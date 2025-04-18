@@ -40,6 +40,15 @@ struct Face {
     std::vector<std::tuple<double, double>> materialData; // Example: (materialProp, thickness)
 };
 
+struct Color{
+    float r, g, b;
+    Color(float r = 0, float g = 0, float b = 0){
+        this->r = r;
+        this->g = g;
+        this->b = b;
+    }
+};
+
 // Mesh class to handle loading, conversion, and writing
 class Mesh {
 public:
@@ -47,6 +56,7 @@ public:
     std::vector<Face> faces;
     std::vector<Vertex> face_normals;
     Vertex centroid;
+    std::vector<Color> vertices_color;
     float x_min, y_min, z_min;
     float x_max, y_max, z_max;
 
