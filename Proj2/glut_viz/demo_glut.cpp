@@ -1,5 +1,8 @@
 #include <iostream>
 #include <GL/freeglut.h>
+#include <cppcolormap.h>
+#include <xtensor/xio.hpp>
+
 using namespace std;
 bool flag_fullscreen = false;
 
@@ -73,17 +76,29 @@ int main(void){
     int argc = 0;
     char* argv = {nullptr};
     int w = 1600, h = 900;
-    glutInit(&argc, &argv);
-    glutInitWindowPosition(0, 0);
-    glutInitWindowSize(w, h);
-    glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-    glutCreateWindow("Amazing GLUT");
+    // glutInit(&argc, &argv);
+    // glutInitWindowPosition(0, 0);
+    // glutInitWindowSize(w, h);
+    // glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
+    // glutCreateWindow("Amazing GLUT");
 
-    glutDisplayFunc(render_cb);
-    glutReshapeFunc(changeSize);
-    glutKeyboardFunc(keyboard_cb);
+    // glutDisplayFunc(render_cb);
+    // glutReshapeFunc(changeSize);
+    // glutKeyboardFunc(keyboard_cb);
 
     
-    glutMainLoop();
+    // glutMainLoop();
+    xt::xtensor<double, 1> tensor = {0.4};
+
+    auto map = cppcolormap::colormap("Reds", 10);
+    auto c = cppcolormap::as_colors(tensor, cppcolormap::colormap("jet"), 0, 1);
+    // for (auto& f: map){
+    //     std::cout << f << " ";
+    //     // for (auto& d: f){
+    //     //     std::cout << typeid(d).name() << std::endl;
+    //     // }
+    // }
+    std::cout << c;
+    // std::cout << cppcolormap::colorcycle("tue", 256) << std::endl;
     return 0;
 }

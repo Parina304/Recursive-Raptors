@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.12...3.29)
 
+include_directories("/home/heartman/miniconda3/include/")
+
 project(glutviz)
 project(demo_glut)
 
@@ -8,6 +10,8 @@ find_package(OpenGL REQUIRED)
 
 # Find FreeGLUT (instead of standard GLUT)
 find_package(GLUT REQUIRED)
+
+find_package(cppcolormap REQUIRED)
 
 # Find CGAL
 find_package(CGAL QUIET COMPONENTS)
@@ -39,5 +43,5 @@ add_executable(glutviz glutviz.cpp)
 add_executable(demo_glut demo_glut.cpp)
 
 # Link FreeGLUT and OpenGL libraries
-target_link_libraries(glutviz ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} mesh_lib mesh_merge CGAL::CGAL)
-target_link_libraries(demo_glut ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES})
+target_link_libraries(glutviz ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} ${cppcolormap_LIBRARY} mesh_lib mesh_merge CGAL::CGAL)
+target_link_libraries(demo_glut ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} ${cppcolormap_LIBRARY})

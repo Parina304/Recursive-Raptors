@@ -34,10 +34,21 @@ struct Vertex {
     }
 };
 
+// struct Color{
+//     float r, g, b;
+//     Color(float r = 0, float g = 0, float b = 0){
+//         this->r = r;
+//         this->g = g;
+//         this->b = b;
+//     }
+// };
+
+
 // Structure to store a face with vertex indices
 struct Face {
     std::vector<uint32_t> vertexIndices;
     std::vector<std::tuple<double, double>> materialData; // Example: (materialProp, thickness)
+    float r, g, b;
 };
 
 // Mesh class to handle loading, conversion, and writing

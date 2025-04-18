@@ -12,6 +12,9 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include "cppcolormap.h"
+#include "ColormapWrapper.h"
+#include <xtensor/xio.hpp>
 
 bool loadSecondFile = false;  // Flag to check if user wants to load 2 files
 
@@ -23,6 +26,7 @@ int window_width = 1600, window_height = 900;
 bool flag_left_mouse_pressed = false;
 bool flag_right_mouse_pressed = false;
 int last_mouse_x = 0, last_mouse_y = 0;
+bool flag_color_calced = false;
 
 Mesh humanoid;
 
@@ -74,16 +78,44 @@ void DrawMesh(const Mesh& m, float translateX = 0.0f){
     glColor3f(0.0f, 1.0f, 1.0f);
     glPushMatrix();
     glTranslatef(translateX, 0.0f, 0.0f);
+    float z_mean;
+    xt::xtensor<double, 1> color_idx;
     
     for (const auto& f: m.faces) {
+        glColor3f(f.r, f.g, f.b);
+        // std::cout << color_idx << " rgb: " << r << g << b;
         glBegin(GL_POLYGON);
+        // glNormal3f(m.face_normals[idx])
         for (const auto& idx: f.vertexIndices){
+            glNormal3f(m.vertices[idx].x, m.vertices[idx].y, m.vertices[idx].z);
             glVertex3f(m.vertices[idx].x, m.vertices[idx].y, m.vertices[idx].z);
         }
         glEnd();
     }
     
     glPopMatrix();
+}
+
+void CalcMeshColors(Mesh& m){
+    float y_mean = 0;
+    xt::xtensor<double, 1> color_idx;
+    // Color c;
+
+    for (auto& f: m.faces){
+        y_mean = 0;
+        for (const auto& idx: f.vertexIndices){
+            y_mean += m.vertices[idx].y;
+        }
+        y_mean /= f.vertexIndices.size();
+
+        color_idx = {y_mean};
+        auto c = cppcolormap::as_colors(color_idx, cppcolormap::jet(), m.y_min, m.y_max);
+        f.r = static_cast<float>(c(0, 0));
+        f.g = static_cast<float>(c(0, 1));
+        f.b = static_cast<float>(c(0, 2));
+        // auto cc = Color(r, g, b);
+        // m.face_color.push_back(cc);
+    }
 }
 
 void display() {
@@ -153,20 +185,32 @@ void initOpenGL() {
     glEnable(GL_LIGHTING);
     glEnable(GL_LIGHT0);
 
-    GLfloat ambient[] = { 1.0f, 1.0f, 1.0f, 1.0f };  // Bright white ambient
-    glLightfv(GL_LIGHT0, GL_AMBIENT, ambient);  // Ambient only (no diffuse/specular)
+    // Set light properties
+    GLfloat ambient[] = { 0.2f, 0.2f, 0.2f, 1.0f };  // Ambient light
+    GLfloat diffuse[] = { 0.3f, 0.3f, 0.3f, 1.0f };  // Diffuse light
+    GLfloat specular[] = { .3f, .3f, .3f, 1.0f }; // Specular light
+    GLfloat position[] = { .0f, .0f, 1.0f, 0.0f }; // Light position
+
+    glLightfv(GL_LIGHT0, GL_AMBIENT, ambient);
+    glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse);
+    glLightfv(GL_LIGHT0, GL_SPECULAR, specular);
+    glLightfv(GL_LIGHT0, GL_POSITION, position);
 
     // Enable color material mode
     glEnable(GL_COLOR_MATERIAL);
     glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
+
+    // Set material properties
+    GLfloat mat_specular[] = { .2f, .2f, .2f, 1.0f };
+    GLfloat mat_shininess[] = {.0f }; // Shininess factor
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
+    glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     gluPerspective(45.0, 1.0, 1.0, 100.0);
     glMatrixMode(GL_MODELVIEW);
 }
-
-
 
 void mouse(int button, int state, int x, int y) {
     if (button == GLUT_LEFT_BUTTON) {
@@ -223,6 +267,11 @@ int main(int argc, char** argv) {
     //     std::string file2 = getFileFromUser("Enter path to second OBJ file: ");
     //     loadOBJ(file2.c_str(), vertices2, faces2);
     // }
+    if (!flag_color_calced){
+        CalcMeshColors(humanoid);
+        flag_color_calced = true;
+    }
+
     glutInit(&fake_argc, fake_argv);
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
     glutInitWindowSize(window_width, window_height);
