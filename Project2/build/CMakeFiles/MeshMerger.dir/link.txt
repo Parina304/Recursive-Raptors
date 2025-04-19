@@ -1,3 +1,0 @@
-C:\msys64\mingw64\bin\cmake.exe -E rm -f CMakeFiles\MeshMerger.dir/objects.a
-C:\msys64\mingw64\bin\ar.exe qc CMakeFiles\MeshMerger.dir/objects.a @CMakeFiles\MeshMerger.dir\objects1.rsp
-C:\msys64\mingw64\bin\c++.exe -O3 -DNDEBUG -Wl,--whole-archive CMakeFiles\MeshMerger.dir/objects.a -Wl,--no-whole-archive -o MeshMerger.exe -Wl,--out-implib,libMeshMerger.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\MeshMerger.dir\linkLibs.rsp
