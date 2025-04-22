@@ -186,10 +186,10 @@ void initOpenGL() {
     glEnable(GL_LIGHT0);
 
     // Set light properties
-    GLfloat ambient[] = { 0.2f, 0.2f, 0.2f, 1.0f };  // Ambient light
-    GLfloat diffuse[] = { 0.3f, 0.3f, 0.3f, 1.0f };  // Diffuse light
-    GLfloat specular[] = { .3f, .3f, .3f, 1.0f }; // Specular light
-    GLfloat position[] = { .0f, .0f, 1.0f, 0.0f }; // Light position
+    GLfloat ambient[] = { 0.5f, 0.5f, 0.5f, 1.0f };  // Ambient light
+    GLfloat diffuse[] = { 0.05f, 0.05, 0.05f, 1.0f };  // Diffuse light
+    GLfloat specular[] = { .0f, .0f, .0f, 1.0f }; // Specular light
+    GLfloat position[] = { 1.0f, 1.0f, 1.0f, 0.0f }; // Light position
 
     glLightfv(GL_LIGHT0, GL_AMBIENT, ambient);
     glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse);
@@ -201,7 +201,7 @@ void initOpenGL() {
     glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
 
     // Set material properties
-    GLfloat mat_specular[] = { .2f, .2f, .2f, 1.0f };
+    GLfloat mat_specular[] = { .0f, .0f, .0f, 1.0f };
     GLfloat mat_shininess[] = {.0f }; // Shininess factor
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
