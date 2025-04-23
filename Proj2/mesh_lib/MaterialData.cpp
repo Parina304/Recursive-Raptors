@@ -159,11 +159,11 @@ vector<double> calculateTempDistribution(double protectionThickness, double miss
     vector<double> c(Nx - 1, -lambda);
 
     // Apply Dirichlet condition at external surface ???
-    b[0] = 1.0;
-    c[0] = 0.0;
+    //b[0] = 1.0;
+    //c[0] = 0.0;
 
     // Let the inner surface be free to evolve (Neumann or insulated would modify this differently)
-    a[Nx - 2] = -lambda;
+    //a[Nx - 2] = -lambda;
     // Do not override b[Nx - 1] or T[Nx - 1]!
 
     // Time stepping
@@ -190,8 +190,8 @@ double calculateRequiredProtectionThickness(double missionDuration) {
     // Initial conditions - worst case at toe where temp is 900K
     double externalTemp = 900.0;
     double maxAllowableTemp = CARBON_FIBER.glassTransitionTemp;
-    double dx = 0.001;  // 0.1 mm grid spacing
-    double dt = 0.5;     // 1 second time step
+    double dx = 0.01;  // 0.1 mm grid spacing
+    double dt = 1;     // 1 second time step
     
     // Binary search to find minimum thickness
     double minThickness = 0.1;  // cm
