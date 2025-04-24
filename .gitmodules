@@ -1,0 +1,6 @@
+[submodule "Proj2/glut_viz/imgui"]
+	path = Proj2/glut_viz/imgui
+	url = https://github.com/ocornut/imgui.git
+[submodule "Proj2/glut_viz/implot"]
+	path = Proj2/glut_viz/implot
+	url = git@github.com:epezent/implot.git
