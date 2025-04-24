@@ -47,7 +47,7 @@ struct Vertex {
 // Structure to store a face with vertex indices
 struct Face {
     std::vector<uint32_t> vertexIndices;
-    std::vector<std::tuple<double, double>> materialData; // Example: (materialProp, thickness)
+    Vertex centroid;
     float r, g, b;
 };
 
@@ -79,6 +79,7 @@ public:
     void to_origin();
     void CalcStats();
     void CalcFaceNormal();
+    void CalcFaceCentroid();
 
     Vertex operator - (Vertex &v1);
     Vertex operator + (Vertex &v1);

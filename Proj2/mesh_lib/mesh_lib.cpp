@@ -42,6 +42,7 @@ bool Mesh::loadOBJ(const std::string& filename) {
 
     file.close();
     CalcStats();
+    CalcFaceCentroid();
     CalcFaceNormal();
 
     return true;
@@ -185,4 +186,15 @@ void Mesh::CalcStats(){
     centroid.x = cx / vertices.size();
     centroid.y = cy / vertices.size();
     centroid.z = cz / vertices.size();
+}
+
+// calculates the centroid for each face
+void Mesh::CalcFaceCentroid(){
+    Vertex centroid;
+    for(auto& f: faces){
+        for(const auto& v_idx: f.vertexIndices){
+            f.centroid = f.centroid + vertices[v_idx];
+        }
+        f.centroid = f.centroid / f.vertexIndices.size();
+    }
 }
