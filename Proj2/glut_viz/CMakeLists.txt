@@ -1,15 +1,17 @@
 cmake_minimum_required(VERSION 3.12...3.29)
 
-include_directories("/home/heartman/miniconda3/include/")
-
 project(glutviz)
 project(demo_glut)
+project(visuals_3)
 
 # Find OpenGL
 find_package(OpenGL REQUIRED)
 
 # Find FreeGLUT (instead of standard GLUT)
 find_package(GLUT REQUIRED)
+
+# find_package(GLFW REQUIRED)
+find_package(glfw3 3.4 REQUIRED)
 
 find_package(cppcolormap REQUIRED)
 
@@ -29,6 +31,9 @@ endif()
 
 # Include directories for OpenGL and FreeGLUT
 include_directories(${OPENGL_INCLUDE_DIRS} ${GLUT_INCLUDE_DIRS})
+include_directories("/home/heartman/miniconda3/include/")
+include_directories("${CMAKE_SOURCE_DIR}/glad/")
+
 
 # Include additional directories
 include_directories("${PROJECT_BINARY_DIR}"
@@ -41,7 +46,9 @@ add_subdirectory("${CMAKE_SOURCE_DIR}/../mesh_lib" mesh_lib)
 # Add the executable
 add_executable(glutviz glutviz.cpp)
 add_executable(demo_glut demo_glut.cpp)
+add_executable(visuals_3 visuals_3.cpp "${CMAKE_SOURCE_DIR}/glad/glad.c")
 
 # Link FreeGLUT and OpenGL libraries
 target_link_libraries(glutviz ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} ${cppcolormap_LIBRARY} mesh_lib mesh_merge CGAL::CGAL)
 target_link_libraries(demo_glut ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} ${cppcolormap_LIBRARY})
+target_link_libraries(visuals_3 ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} ${GLFW_LIBRARIES} ${cppcolormap_LIBRARY} glfw mesh_lib mesh_merge CGAL::CGAL)
