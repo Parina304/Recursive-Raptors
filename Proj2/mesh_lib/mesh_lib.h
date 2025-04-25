@@ -80,21 +80,12 @@ public:
     void CalcFaceNormal();
     void CalcFaceCentroid();
 
-    Vertex operator - (Vertex &v1);
-    Vertex operator + (Vertex &v1);
+    // Vertex operator - (Vertex &v1);
+    // Vertex operator + (Vertex &v1);
 
 // private:
 //     Vertex VectorCrossProduct(Vertex vec1, Vertex vec2);
 //     float CalcNorm(Vertex v);
-};
-
-class VolMesh : public Mesh {
-    
-public:
-    bool parsePoints(const std::string& filename);
-    bool parseCells(const std::string& filename);
-    bool parseVTK(const std::string& filename);
-    bool writeVTK(const std::string& filename) const;
 
     Vertex VectorCrossProduct(Vertex v1, Vertex v2);
 
@@ -132,6 +123,16 @@ public:
 
     // “Solve” the thermal simulation: update face temperatures (this is a stub for actual simulation)
     void solveThermal();
+};
+
+class VolMesh : public Mesh {
+    
+public:
+    bool parsePoints(const std::string& filename);
+    bool parseCells(const std::string& filename);
+    bool parseVTK(const std::string& filename);
+    bool writeVTK(const std::string& filename) const;
+
 };
 
 #endif // MESH_LIB_H
