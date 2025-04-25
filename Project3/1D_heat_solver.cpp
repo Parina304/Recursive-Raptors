@@ -3,8 +3,34 @@
 #include <cmath>
 #include <cstdlib>
 #include <ctime>
-
+#include <fstream>
+#include <string>
 using namespace std;
+
+// Function to write two vectors into a CSV file with two columns
+void writeVectorsToCSV(const string& filename, const vector<double>& vec1, const vector<double>& vec2) {
+    // Check if vectors have the same size
+    if (vec1.size() != vec2.size()) {
+        cerr << "Error: Vectors must have the same size." << endl;
+        return;
+    }
+
+    ofstream file(filename);
+    if (!file.is_open()) {
+        cerr << "Error: Could not open file " << filename << endl;
+        return;
+    }
+
+    // Optional: Write a header
+    file << "z value,thickness (cm)\n";
+
+    // Write the data
+    for (size_t i = 0; i < vec1.size(); ++i) {
+        file << vec1[i] << "," << vec2[i] << "\n";
+    }
+
+    file.close();
+}
 
 // Struct to store material properties
 struct MaterialProperties {
@@ -152,6 +178,7 @@ vector<double> calculateRequiredProtectionThickness(double missionDuration, doub
     bool DEBUG = false; 
     double totalSize = 2.50; // Robot height in meters
     vector<double> insulatorThickness((int)(totalSize/dz)+1, 0.0);
+    vector<double> zValues((int)(totalSize/dz)+1, 0.0);
 
     int N = (int)(totalSize / dz + 1e-6);
     for (int i = 0; i <= N; i++) {
@@ -186,9 +213,16 @@ vector<double> calculateRequiredProtectionThickness(double missionDuration, doub
         }
         
         insulatorThickness[i] = currentThickness;
+        zValues[i] = z;
+
         cout << "Required thermal protection thickness at z = "<< z <<" m for " << (int)(missionDuration/3600) << " hour mission: " << insulatorThickness[i] << " cm" << endl;
     }
+    
+    // outputting thickness values in a csv
+    string filename = "Thickness_" + to_string((int)(missionDuration/3600))+"_hr.csv";
+    writeVectorsToCSV(filename, zValues, insulatorThickness);
 
+    std::cout << "Output written in a csv!" << std::endl;
     return insulatorThickness;
 }
 
