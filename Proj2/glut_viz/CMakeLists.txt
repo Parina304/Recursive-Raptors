@@ -62,7 +62,7 @@ include_directories("${PROJECT_BINARY_DIR}"
                     "${PROJECT_SOURCE_DIR}/../mesh_lib"
                     "${PROJECT_SOURCE_DIR}/../mesh_merge"
                     )
-add_subdirectory("${CMAKE_SOURCE_DIR}/../mesh_merge" mesh_merge)
+# add_subdirectory("${CMAKE_SOURCE_DIR}/../mesh_merge" mesh_merge)
 add_subdirectory("${CMAKE_SOURCE_DIR}/../mesh_lib" mesh_lib)
 
 # Add the executable
@@ -73,4 +73,4 @@ add_executable(visuals_3 visuals_3.cpp "${CMAKE_SOURCE_DIR}/glad/glad.c")
 # Link FreeGLUT and OpenGL libraries
 # target_link_libraries(glutviz ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} ${cppcolormap_LIBRARY} mesh_lib mesh_merge CGAL::CGAL)
 # target_link_libraries(demo_glut ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} ${cppcolormap_LIBRARY})
-target_link_libraries(visuals_3 ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} ${GLFW_LIBRARIES} ${GLM_LIBRARIES} ${cppcolormap_LIBRARY} glfw imgui::imgui implot mesh_lib mesh_merge CGAL::CGAL)
+target_link_libraries(visuals_3 ${OPENGL_LIBRARIES} ${GLUT_LIBRARIES} ${GLFW_LIBRARIES} ${GLM_LIBRARIES} ${cppcolormap_LIBRARY} glfw imgui implot mesh_lib CGAL::CGAL)
