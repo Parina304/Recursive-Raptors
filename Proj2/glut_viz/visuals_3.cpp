@@ -141,9 +141,9 @@ int main() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Load CSV profiles from assets/csv
-    carbon = loadProfile("assets/csv/carbon_thickness.csv");
-    glue = loadProfile("assets/csv/glue_thickness.csv");
-    steel = loadProfile("assets/csv/steel_thickness.csv");
+    carbon = loadProfile("../../assets/csv/carbon_thickness.csv");
+    glue = loadProfile("../../assets/csv/glue_thickness.csv");
+    steel = loadProfile("../../assets/csv/steel_thickness.csv");
     int N = (int)carbon.size();
     heights.resize(N); steelR.resize(N); glueR.resize(N); carbonR.resize(N);
     for (int i = 0;i < N;++i) {
@@ -154,7 +154,7 @@ int main() {
         carbonR[i] = glueR[i] + carbon[i] / 100.0f;
     }
 
-    Mesh mesh; if (!mesh.loadOBJ("assets/obj/humanoid_robot_2d.obj")) return 1;
+    Mesh mesh; if (!mesh.loadOBJ("../../assets/obj/humanoid_robot_2d.obj")) return 1;
     float minZ = 1e9f, maxZ = -1e9f;
     for (auto& v : mesh.vertices) { minZ = glm::min(minZ, v.z); maxZ = glm::max(maxZ, v.z); }
     cutPlaneZ = 0.0f;
