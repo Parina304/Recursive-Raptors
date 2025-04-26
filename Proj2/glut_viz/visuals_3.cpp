@@ -154,14 +154,31 @@ int main() {
         carbonR[i] = glueR[i] + carbon[i] / 100.0f;
     }
 
-    Mesh mesh; if (!mesh.loadOBJ("../../assets/obj/humanoid_robot_2d.obj")) return 1;
+    std::string mesh_path = "../../assets/obj/humanoid_robot_2d.obj";
+    Mesh mesh;
+    // loads mesh
+    if (!mesh.loadOBJ(mesh_path)) return 1;
+
     float minZ = 1e9f, maxZ = -1e9f;
     for (auto& v : mesh.vertices) { minZ = glm::min(minZ, v.z); maxZ = glm::max(maxZ, v.z); }
     cutPlaneZ = 0.0f;
 
     auto& V = mesh.vertices;
-    std::vector<unsigned int> I; I.reserve(mesh.faces.size() * 3);
-    for (auto& F : mesh.faces) { I.push_back(F.v[0]);I.push_back(F.v[1]);I.push_back(F.v[2]); }
+    std::vector<unsigned int> I;
+    size_t total_vertex_indices = 0;
+
+    // Reserve space for the index buffer
+    // for (const auto& F : mesh.faces) {
+    //     total_vertex_indices += (F.v.size() - 2) * 3; // Each face contributes (n - 2) * 3 indices
+    // }
+    I.reserve(mesh.faces.size()*3);
+
+    // Populate the index buffer
+    for (const auto& F : mesh.faces) {
+        I.push_back(F.v[0]);
+        I.push_back(F.v[1]);
+        I.push_back(F.v[2]);
+    }
     GLuint VAO, VBO, CBO, EBO;
     glGenVertexArrays(1, &VAO); glGenBuffers(1, &VBO); glGenBuffers(1, &CBO); glGenBuffers(1, &EBO);
     glBindVertexArray(VAO);
@@ -240,11 +257,18 @@ int main() {
             for (auto& F : mesh.faces) {
                 float s = ((V[F.v[0]].x + V[F.v[1]].x + V[F.v[2]].x) / 3.0f - minX) / (maxX - minX);
                 float tv = 0;
-                switch (F.mat) { case 0:tv = lookup(steel, s);break; case 1:tv = lookup(glue, s);break; case 2:tv = lookup(carbon, s);break; }
-                                       float tn = glm::clamp((tv - thickMin) / (thickMax - thickMin), 0.0f, 1.0f);
-                                       glm::vec3 col = (tn < 0.5f ? glm::mix(glm::vec3(0, 0, 1), glm::vec3(0, 1, 0), tn * 2)
+                switch (F.mat) {
+                    case 0:
+                    tv = lookup(steel, s);break; 
+                    case 1:tv = lookup(glue, s);break; 
+                    case 2:tv = lookup(carbon, s);break; 
+                }
+                float tn = glm::clamp((tv - thickMin) / (thickMax - thickMin), 0.0f, 1.0f);
+                glm::vec3 col = (tn < 0.5f ? glm::mix(glm::vec3(0, 0, 1), glm::vec3(0, 1, 0), tn * 2)
                                            : glm::mix(glm::vec3(0, 1, 0), glm::vec3(1, 0, 0), (tn - 0.5f) * 2));
-                                       matCols[F.v[0]] = col; matCols[F.v[1]] = col; matCols[F.v[2]] = col;
+                matCols[F.v[0]] = col; 
+                matCols[F.v[1]] = col; 
+                matCols[F.v[2]] = col;
             }
             glBindBuffer(GL_ARRAY_BUFFER, CBO);
             glBufferSubData(GL_ARRAY_BUFFER, 0, matCols.size() * sizeof(glm::vec3), matCols.data());

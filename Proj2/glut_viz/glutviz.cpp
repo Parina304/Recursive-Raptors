@@ -5,7 +5,6 @@
 #endif
 
 #include "mesh_lib.h"
-#include "mesh_merge.h"
 
 #include <iostream>
 #include <string>

@@ -55,10 +55,12 @@ bool Mesh::loadOBJ(const std::string& filePath) {
             // Face line (triangle assumed). OBJ faces are 1-indexed.
             // We also handle faces with texture/normal: "f v/t/n v/t/n v/t/n"
             std::istringstream iss(line.substr(2));
-            std::string v1, v2, v3;
-            if (!(iss >> v1 >> v2 >> v3)) {
-                continue; // skip if parse fails
+            std::vector<std::string> vertex_tokens;
+            std:: string token;
+            while (iss >> token){
+                vertex_tokens.push_back(token);
             }
+
             // Parse each vertex index group up to '/', ignoring texture/normal indices.
             auto parseIndex = [](const std::string& token) {
                 // token might be "int" or "int/int/int" etc.
@@ -72,24 +74,37 @@ bool Mesh::loadOBJ(const std::string& filePath) {
                     idx = std::stoi(token.substr(0, slashPos));
                 }
                 return idx;
-                };
-            int i1 = parseIndex(v1);
-            int i2 = parseIndex(v2);
-            int i3 = parseIndex(v3);
-            Face face;
-            face.v[0] = i1 - 1; // convert to 0-index
-            face.v[1] = i2 - 1;
-            face.v[2] = i3 - 1;
-            face.mat = currentMat;
-            // Assign an initial temperature based on material as a simple heuristic:
-            float baseTemp = 300.0f; // base ambient temperature in K
-            switch (face.mat) {
-            case INSULATION: face.temp = baseTemp + 10.0f; break;
-            case CFRP:       face.temp = baseTemp + 40.0f; break;  // outer layer hotter
-            case GLUE:       face.temp = baseTemp + 30.0f; break;
-            case STEEL:      face.temp = baseTemp + 20.0f; break;
+            };
+            // int i1 = parseIndex(v1);
+            // int i2 = parseIndex(v2);
+            // int i3 = parseIndex(v3);
+
+            // Parse vertex tokens to indices
+            std::vector<int> vertex_indices;
+            for (const auto& vertex_token: vertex_tokens){
+                vertex_indices.push_back(parseIndex(vertex_token));
             }
-            faces.push_back(face);
+
+            for (size_t i = 1; i < vertex_indices.size() - 1; ++i){
+                Face face;
+                // face.v[0] = i1 - 1; // convert to 0-index
+                // face.v[1] = i2 - 1;
+                // face.v[2] = i3 - 1;
+                face.v[0] = vertex_indices[0] - 1;
+                face.v[1] = vertex_indices[i] - 1;
+                face.v[2] = vertex_indices[i + 1] - 1;
+                face.mat = currentMat;
+
+                // Assign an initial temperature based on material as a simple heuristic:
+                float baseTemp = 300.0f; // base ambient temperature in K
+                switch (face.mat) {
+                case INSULATION: face.temp = baseTemp + 10.0f; break;
+                case CFRP:       face.temp = baseTemp + 40.0f; break;  // outer layer hotter
+                case GLUE:       face.temp = baseTemp + 30.0f; break;
+                case STEEL:      face.temp = baseTemp + 20.0f; break;
+                }
+                faces.push_back(face);
+            }
         }
         // (We ignore other OBJ statements like mtllib, normals, etc., for brevity)
     }
