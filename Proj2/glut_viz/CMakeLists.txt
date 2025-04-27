@@ -48,7 +48,7 @@ add_library(implot
 
 # Include directories for OpenGL and FreeGLUT
 include_directories(${OPENGL_INCLUDE_DIRS} ${GLUT_INCLUDE_DIRS} ${GLM_INCLUDE_DIRS})
-include_directories("/home/heartman/miniconda3/include/")
+include_directories("~/miniconda3/include/")
 include_directories("${PROJECT_SOURCE_DIR}/glad/")
 include_directories("${PROJECT_SOURCE_DIR}/imgui/")
 include_directories("${PROJECT_SOURCE_DIR}/imgui/backends/")

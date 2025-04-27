@@ -1,14 +1,17 @@
 #include "mesh_lib.h"
+
 #include <iostream>
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <algorithm>
+#include <unistd.h>
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <algorithm>
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
@@ -31,6 +34,22 @@ static std::vector<float> carbon, glue, steel;
 static float thickMin = 1e9f, thickMax = -1e9f;
 static std::vector<float> heights, steelR, glueR, carbonR;
 static const float robotLength = 2.5f;
+
+// makes excutable compatible in ./ or ./build  
+std::string PrependBasePath (const std::string& path){
+    char cwd[1024];
+    if (getcwd(cwd, sizeof(cwd)) != nullptr) {
+        std::string currentDir(cwd);
+        if (currentDir.find("/build") != std::string::npos) {
+            return "../" + path;  // If in build folder, go up one level
+        } else {
+            return "./" + path;   // Otherwise, use the current directory
+        }
+    } else {
+        std::cerr << "Error: Unable to get current working directory.\n";
+        return "./" + path;  // Default to current directory
+    }
+}
 
 // Load two-column CSV (position,value)
 std::vector<float> loadProfile(const std::string& fname) {
@@ -141,9 +160,9 @@ int main() {
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     // Load CSV profiles from assets/csv
-    carbon = loadProfile("assets/csv/carbon_thickness.csv");
-    glue = loadProfile("assets/csv/glue_thickness.csv");
-    steel = loadProfile("assets/csv/steel_thickness.csv");
+    carbon = loadProfile(PrependBasePath("assets/csv/carbon_thickness.csv"));
+    glue = loadProfile(PrependBasePath("assets/csv/glue_thickness.csv"));
+    steel = loadProfile(PrependBasePath("assets/csv/steel_thickness.csv"));
     int N = (int)carbon.size();
     heights.resize(N); steelR.resize(N); glueR.resize(N); carbonR.resize(N);
     for (int i = 0;i < N;++i) {
@@ -154,7 +173,8 @@ int main() {
         carbonR[i] = glueR[i] + carbon[i] / 100.0f;
     }
 
-    Mesh mesh; if (!mesh.loadOBJ("assets/obj/humanoid_robot_2d.obj")) return 1;
+    Mesh mesh;
+    if (!mesh.loadOBJ(PrependBasePath("assets/obj/humanoid_robot_2d.obj"))) return 1;
     float minZ = 1e9f, maxZ = -1e9f;
     for (auto& v : mesh.vertices) { minZ = glm::min(minZ, v.z); maxZ = glm::max(maxZ, v.z); }
     cutPlaneZ = 0.0f;
