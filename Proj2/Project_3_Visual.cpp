@@ -1,4 +1,19 @@
-#include "mesh_lib.h"
+// mesh_viewer.cpp – single‑file demo that toggles between a 3‑D and 2‑D OBJ
+// model and still supports Face, Wireframe, and Material colouring modes.
+//
+// Build:
+//   g++ mesh_viewer.cpp -I<path‑to‑glad> -I<path‑to‑glm> -lglfw -ldl -lGL -std=c++17 -o viewer
+// (plus the ImGui / ImPlot / glad sources in your build system)
+//
+// Controls:
+//   • Radio buttons   : pick 3‑D vs 2‑D mesh, view mode, and cut plane.
+//   • W key           : cycles Face/Wireframe/Material if the GUI is hidden.
+//   • Mouse (LMB)     : orbit
+//   • Mouse (RMB)     : pan
+//   • Scroll          : dolly zoom
+//--------------------------------------------------------------------------
+
+#include "mesh_lib.h"          // simple OBJ + Face data structure (user‑supplied)
 
 #include <iostream>
 #include <fstream>
@@ -17,21 +32,62 @@
 #include "imgui_impl_opengl3.h"
 #include "implot.h"
 
-// View modes
+//--------------------------------------------------------------------------
+// ENUMERATIONS
+//--------------------------------------------------------------------------
+
+// 3 visual styles (shading) that apply no matter which mesh is loaded
 enum ViewMode { MODE_FACE = 0, MODE_WIREFRAME, MODE_MATERIAL };
-static ViewMode currentMode = MODE_FACE;
+static ViewMode currentViewMode = MODE_FACE;
 
-// Camera & interaction
-static float camYaw = 0, camPitch = 0, camDistance = 5, panX = 0, panY = 0;
-static bool leftMouse = false, rightMouse = false;
-static double lastX = 0, lastY = 0;
+// Which mesh is currently resident on the GPU
+enum MeshType { MESH_3D = 0, MESH_2D };
+static MeshType currentMeshType = MESH_3D;
 
-// Cutting plane
-static float cutPlaneZ = 0.0f;
+//--------------------------------------------------------------------------
+// CAMERA / INTERACTION STATE
+//--------------------------------------------------------------------------
+static float camYaw = 0.0f, camPitch = 0.0f, camDistance = 5.0f;
+static float panX = 0.0f, panY = 0.0f;
+static bool  leftMouse = false, rightMouse = false;
+static double lastX = 0.0, lastY = 0.0;
 
-// Thickness profiles & ranges
+//--------------------------------------------------------------------------
+// CUTTING PLANE
+//--------------------------------------------------------------------------
+static float cutPlaneZ = 0.0f;   // in model space (metres)
+
+//--------------------------------------------------------------------------
+// THICKNESS PROFILES (loaded from CSV)
+//--------------------------------------------------------------------------
 static std::vector<float> carbon, glue, steel;
 static float thickMin = 1e9f, thickMax = -1e9f;
+static std::vector<float> heights, steelR, glueR, carbonR, thermalR;
+static const float robotLength = 2.5f;                   // m
+static std::vector<float> thermZ, thermT;                // thermal profile
+
+//--------------------------------------------------------------------------
+// OPENGL RESOURCES THAT NEED TO BE RECREATED WHENEVER WE SWITCH MESH
+//--------------------------------------------------------------------------
+static GLuint VAO = 0, VBO = 0, CBO = 0, EBO = 0;
+static Mesh   mesh;                       // CPU‑side representation (faces, verts)
+static std::vector<glm::vec3>   V;
+static std::vector<Face>        F;
+static std::vector<unsigned int>I;
+
+//--------------------------------------------------------------------------
+// FORWARD DECLARATIONS
+//--------------------------------------------------------------------------
+bool  loadThicknessCSV();                     // called once at start‑up
+bool  loadMeshToGPU(const std::string& path); // used every time mesh changes
+GLuint compileShader(GLenum, const char*);
+GLuint createProgram();
+
+//--------------------------------------------------------------------------
+// CSV HELPERS (single‑column and two‑column)
+//--------------------------------------------------------------------------
+static std::vector<float> loadProfile1(const std::string& fname)
+{
 static std::vector<float> heights, steelR, glueR, carbonR;
 static const float robotLength = 2.5f;
 
@@ -55,122 +111,271 @@ std::string PrependBasePath (const std::string& path){
 std::vector<float> loadProfile(const std::string& fname) {
     std::vector<float> vals;
     std::ifstream in(fname);
-    if (!in) { std::cerr << "Failed to open " << fname << "\n"; return vals; }
-    std::string line; std::getline(in, line);
+    if (!in) {
+        std::cerr << "[CSV] Cannot open " << fname << "\n";
+        return vals;
+    }
+    std::string line; std::getline(in, line);              // skip header
     while (std::getline(in, line)) {
         std::istringstream ss(line);
-        float x, v; char comma;
-        ss >> x >> comma >> v;
+        float s, v; char comma;
+        ss >> s >> comma >> v;             // s is the 0…1 normalised height
         vals.push_back(v);
-        thickMin = glm::min(thickMin, v);
-        thickMax = glm::max(thickMax, v);
+        thickMin = std::min(thickMin, v);
+        thickMax = std::max(thickMax, v);
     }
     return vals;
 }
 
-// Linear interpolation lookup
-float lookup(const std::vector<float>& prof, float s) {
-    if (prof.empty()) return 0.f;
-    float idx = s * (prof.size() - 1);
-    int i0 = (int)floor(idx), i1 = glm::min(i0 + 1, (int)prof.size() - 1);
-    float f = idx - i0;
-    return prof[i0] * (1 - f) + prof[i1] * f;
-}
-
-// GLFW callbacks
-void key_callback(GLFWwindow*, int key, int, int action, int) {
-    if (action == GLFW_PRESS && key == GLFW_KEY_W) {
-        currentMode = ViewMode((currentMode + 1) % 3);
-        GLenum m = (currentMode == MODE_WIREFRAME ? GL_LINE : GL_FILL);
-        glPolygonMode(GL_FRONT_AND_BACK, m);
+static void loadThermal(const std::string& fname)
+{
+    std::ifstream in(fname);
+    if (!in) { std::cerr << "[CSV] Cannot open " << fname << "\n"; return; }
+    std::string line; std::getline(in, line);
+    while (std::getline(in, line)) {
+        std::istringstream ss(line);
+        float z, t; char comma;
+        ss >> z >> comma >> t;
+        thermZ.push_back(z);
+        thermT.push_back(t);
     }
 }
-void mouse_button_callback(GLFWwindow*, int b, int a, int) {
-    if (b == GLFW_MOUSE_BUTTON_LEFT)  leftMouse = (a == GLFW_PRESS);
-    if (b == GLFW_MOUSE_BUTTON_RIGHT) rightMouse = (a == GLFW_PRESS);
-}
-void cursor_position_callback(GLFWwindow*, double x, double y) {
-    double dx = x - lastX, dy = y - lastY; lastX = x; lastY = y;
-    if (leftMouse) { camYaw += dx * 0.3f; camPitch += dy * 0.3f; camPitch = glm::clamp(camPitch, -89.9f, 89.9f); }
-    if (rightMouse) { float ps = 0.002f * camDistance; panX -= dx * ps; panY += dy * ps; }
-}
-void scroll_callback(GLFWwindow*, double, double yoff) {
-    camDistance *= (1.0f - (float)yoff * 0.1f);
-    camDistance = glm::max(camDistance, 0.1f);
+
+// Linear look‑ups for material and thermal profiles
+static float interp1D(const std::vector<float>& arr, float s)
+{
+    if (arr.empty()) return 0.0f;
+    float idx = s * (arr.size() - 1);
+    int   i0 = (int)std::floor(idx);
+    int   i1 = std::min(i0 + 1, (int)arr.size() - 1);
+    float f = idx - i0;
+    return arr[i0] * (1.0f - f) + arr[i1] * f;
 }
 
-// Shaders with clipping
-const char* vSrc = R"(
+static float interpThermal(float h)
+{
+    if (thermZ.empty()) return 0.0f;
+    if (h <= thermZ.front()) return thermT.front();
+    if (h >= thermZ.back())  return thermT.back();
+    int lo = 0, hi = (int)thermZ.size() - 1;
+    while (hi - lo > 1) {
+        int mid = (lo + hi) / 2;
+        if (thermZ[mid] <= h) lo = mid; else hi = mid;
+    }
+    float f = (h - thermZ[lo]) / (thermZ[hi] - thermZ[lo]);
+    return thermT[lo] * (1.0f - f) + thermT[hi] * f;
+}
+
+//--------------------------------------------------------------------------
+// MESH LOADING + GPU BUFFER UPLOAD
+//--------------------------------------------------------------------------
+
+bool loadMeshToGPU(const std::string& path)
+{
+    // Load OBJ into CPU structures
+    if (!mesh.loadOBJ(path)) {
+        std::cerr << "[OBJ] Failed to load " << path << "\n";
+        return false;
+    }
+    V = mesh.vertices;
+    F = mesh.faces;
+
+    // Build (or rebuild) index buffer
+    I.clear(); I.reserve(F.size() * 3);
+    for (const auto& f : F) {
+        I.push_back(f.v[0]); I.push_back(f.v[1]); I.push_back(f.v[2]);
+    }
+
+    // Lazy create GL objects once
+    if (VAO == 0) {
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+        glGenBuffers(1, &CBO);
+        glGenBuffers(1, &EBO);
+    }
+
+    // ── Upload vertex positions ────────────────────────────────────────────────
+    glBindVertexArray(VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, V.size() * sizeof(glm::vec3), V.data(), GL_STATIC_DRAW);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    // ── Default (grey) colours – updated every frame when needed ───────────────
+    std::vector<glm::vec3> defCols(V.size(), glm::vec3(0.8f));
+    glBindBuffer(GL_ARRAY_BUFFER, CBO);
+    glBufferData(GL_ARRAY_BUFFER, defCols.size() * sizeof(glm::vec3), defCols.data(), GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+    glEnableVertexAttribArray(1);
+
+    // ── Indices ────────────────────────────────────────────────────────────────
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, I.size() * sizeof(unsigned int), I.data(), GL_STATIC_DRAW);
+
+    glBindVertexArray(0);
+    return true;
+}
+
+//--------------------------------------------------------------------------
+// SHADERS (single clip plane)
+//--------------------------------------------------------------------------
+static const char* vSrc = R"(
 #version 330 core
 layout(location=0) in vec3 aPos;
 layout(location=1) in vec3 aColor;
+
 uniform mat4 uMVP;
 uniform vec4 uClipPlane;
-out vec3 fragColor;
-void main(){
-    gl_Position = uMVP * vec4(aPos,1.0);
-    fragColor = aColor;
+
+out vec3 vColor;
+
+void main() {
+    gl_Position = uMVP * vec4(aPos, 1.0);
+    vColor      = aColor;
     gl_ClipDistance[0] = dot(vec4(aPos,1.0), uClipPlane);
-}
-)";
-const char* fSrc = R"(
+})";
+
+static const char* fSrc = R"(
 #version 330 core
-in vec3 fragColor;
-out vec4 outColor;
-void main(){ outColor = vec4(fragColor,1.0); }
+in  vec3 vColor;
+out vec4 FragColor;
+void main() { FragColor = vec4(vColor, 1.0); }
 )";
 
-GLuint compileShader(GLenum t, const char* src) {
-    GLuint s = glCreateShader(t);
+GLuint compileShader(GLenum type, const char* src)
+{
+    GLuint s = glCreateShader(type);
     glShaderSource(s, 1, &src, nullptr);
     glCompileShader(s);
     GLint ok; glGetShaderiv(s, GL_COMPILE_STATUS, &ok);
-    if (!ok) { char b[512]; glGetShaderInfoLog(s, 512, nullptr, b); std::cerr << b; }
+    if (!ok) {
+        char log[1024];
+        glGetShaderInfoLog(s, 1024, nullptr, log);
+        std::cerr << "[GLSL] " << log << "\n";
+    }
     return s;
 }
-GLuint createProgram() {
-    GLuint vs = compileShader(GL_VERTEX_SHADER, vSrc), fs = compileShader(GL_FRAGMENT_SHADER, fSrc), p = glCreateProgram();
-    glAttachShader(p, vs); glAttachShader(p, fs); glLinkProgram(p);
+
+GLuint createProgram()
+{
+    GLuint vs = compileShader(GL_VERTEX_SHADER, vSrc);
+    GLuint fs = compileShader(GL_FRAGMENT_SHADER, fSrc);
+    GLuint p = glCreateProgram();
+    glAttachShader(p, vs);
+    glAttachShader(p, fs);
+    glLinkProgram(p);
     GLint ok; glGetProgramiv(p, GL_LINK_STATUS, &ok);
-    if (!ok) { char b[512]; glGetProgramInfoLog(p, 512, nullptr, b); std::cerr << b; }
-    glDeleteShader(vs); glDeleteShader(fs); return p;
+    if (!ok) {
+        char log[1024];
+        glGetProgramInfoLog(p, 1024, nullptr, log);
+        std::cerr << "[GLSL] " << log << "\n";
+    }
+    glDeleteShader(vs);
+    glDeleteShader(fs);
+    return p;
 }
 
-int main() {
+//--------------------------------------------------------------------------
+// GLFW CALLBACKS
+//--------------------------------------------------------------------------
+static void key_cb(GLFWwindow*, int key, int, int action, int)
+{
+    if (action == GLFW_PRESS && key == GLFW_KEY_W) {
+        currentViewMode = ViewMode((currentViewMode + 1) % 3);
+        GLenum mode = (currentViewMode == MODE_WIREFRAME ? GL_LINE : GL_FILL);
+        glPolygonMode(GL_FRONT_AND_BACK, mode);
+    }
+}
+
+static void mouse_btn_cb(GLFWwindow*, int button, int action, int)
+{
+    if (button == GLFW_MOUSE_BUTTON_LEFT)  leftMouse = (action == GLFW_PRESS);
+    if (button == GLFW_MOUSE_BUTTON_RIGHT) rightMouse = (action == GLFW_PRESS);
+}
+
+static void cursor_cb(GLFWwindow*, double x, double y)
+{
+    double dx = x - lastX, dy = y - lastY;
+    lastX = x; lastY = y;
+
+    if (leftMouse) {
+        camYaw += float(dx) * 0.3f;
+        camPitch += float(dy) * 0.3f;
+        camPitch = std::clamp(camPitch, -89.9f, 89.9f);
+    }
+    if (rightMouse) {
+        float s = 0.002f * camDistance;
+        panX -= float(dx) * s;
+        panY += float(dy) * s;
+    }
+}
+
+static void scroll_cb(GLFWwindow*, double, double yoff)
+{
+    camDistance *= (1.0f - float(yoff) * 0.1f);
+    camDistance = std::max(camDistance, 0.1f);
+}
+
+//--------------------------------------------------------------------------
+// MAIN
+//--------------------------------------------------------------------------
+int main()
+{
     if (!glfwInit()) return 1;
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    GLFWwindow* w = glfwCreateWindow(1280, 720, "Mesh Viewer", nullptr, nullptr);
-    glfwMakeContextCurrent(w);
-    gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-    glfwSetKeyCallback(w, key_callback);
-    glfwSetMouseButtonCallback(w, mouse_button_callback);
-    glfwSetCursorPosCallback(w, cursor_position_callback);
-    glfwSetScrollCallback(w, scroll_callback);
-    glfwGetCursorPos(w, &lastX, &lastY);
+    GLFWwindow* win = glfwCreateWindow(1280, 720, "Mesh Viewer 2D/3D", nullptr, nullptr);
+    glfwMakeContextCurrent(win);
 
+    gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+
+    glfwSetKeyCallback(win, key_cb);
+    glfwSetMouseButtonCallback(win, mouse_btn_cb);
+    glfwSetCursorPosCallback(win, cursor_cb);
+    glfwSetScrollCallback(win, scroll_cb);
+    glfwGetCursorPos(win, &lastX, &lastY);
+
+    // ── ImGui + ImPlot ─────────────────────────────────────────────────────────
     IMGUI_CHECKVERSION(); ImGui::CreateContext(); ImPlot::CreateContext();
     ImGui::StyleColorsDark();
-    ImGui_ImplGlfw_InitForOpenGL(w, true);
+    ImGui_ImplGlfw_InitForOpenGL(win, true);
     ImGui_ImplOpenGL3_Init("#version 330 core");
 
-    // Enable alpha blending for translucent plots
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    //------------------------------------------------------------------ CSV ----
+    carbon = loadProfile1("assets/csv/carbon_thickness.csv");
+    glue = loadProfile1("assets/csv/glue_thickness.csv");
+    steel = loadProfile1("assets/csv/steel_thickness.csv");
+    loadThermal("assets/csv/Thickness_1_hr.csv");
 
     // Load CSV profiles from assets/csv
     carbon = loadProfile(PrependBasePath("assets/csv/carbon_thickness.csv"));
     glue = loadProfile(PrependBasePath("assets/csv/glue_thickness.csv"));
     steel = loadProfile(PrependBasePath("assets/csv/steel_thickness.csv"));
     int N = (int)carbon.size();
-    heights.resize(N); steelR.resize(N); glueR.resize(N); carbonR.resize(N);
-    for (int i = 0;i < N;++i) {
-        float s = i / (float)(N - 1);
+    heights.resize(N);
+    steelR.resize(N); glueR.resize(N); carbonR.resize(N); thermalR.resize(N);
+
+    for (int i = 0; i < N; ++i) {
+        float s = i / float(N - 1);
         heights[i] = s * robotLength;
         steelR[i] = steel[i] / 100.0f;
         glueR[i] = steelR[i] + glue[i] / 100.0f;
         carbonR[i] = glueR[i] + carbon[i] / 100.0f;
+        thermalR[i] = carbonR[i] + interpThermal(heights[i]) / 100.0f;
+    }
+
+    //----------------------------------------------------------------- OBJ ----
+    const std::string OBJ_3D = "assets/obj/humanoid_robot.obj";
+    const std::string OBJ_2D = "assets/obj/humanoid_robot_2d.obj";
+
+    if (!loadMeshToGPU(OBJ_3D)) return 1;          // start with 3‑D model
+
+    //----------------------------------------------------------------- GLSL ----
     }
 
     Mesh mesh;
@@ -197,47 +402,67 @@ int main() {
     glBindVertexArray(0);
 
     GLuint prog = createProgram();
-    GLint locMVP = glGetUniformLocation(prog, "uMVP"), locClip = glGetUniformLocation(prog, "uClipPlane");
-    glEnable(GL_DEPTH_TEST); glEnable(GL_CLIP_DISTANCE0);
+    GLint  locMVP = glGetUniformLocation(prog, "uMVP");
+    GLint  locClip = glGetUniformLocation(prog, "uClipPlane");
+
+    glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CLIP_DISTANCE0);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-    while (!glfwWindowShouldClose(w)) {
-        glfwPollEvents(); int W, H; glfwGetFramebufferSize(w, &W, &H); H = glm::max(H, 1);
+    //---------------------------------------------------------------- MAIN LOOP -
+    while (!glfwWindowShouldClose(win)) {
+        glfwPollEvents();
+        int fbW, fbH; glfwGetFramebufferSize(win, &fbW, &fbH);
+        fbH = std::max(fbH, 1);
 
-        ImGui_ImplOpenGL3_NewFrame(); ImGui_ImplGlfw_NewFrame(); ImGui::NewFrame();
-        // Set wider menu
-        ImGui::SetNextWindowSize(ImVec2(260, 0), ImGuiCond_Once);
-        ImGui::Begin("View Mode", nullptr, ImGuiWindowFlags_NoCollapse);
-        ImGui::Text("(Press W to toggle)");
-        if (ImGui::RadioButton("Face", currentMode == MODE_FACE)) { currentMode = MODE_FACE; glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); }
-        if (ImGui::RadioButton("Wireframe", currentMode == MODE_WIREFRAME)) { currentMode = MODE_WIREFRAME; glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); }
-        if (ImGui::RadioButton("Material", currentMode == MODE_MATERIAL)) { currentMode = MODE_MATERIAL; glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); }
-        ImGui::SliderFloat("Cut Z", &cutPlaneZ, minZ, maxZ);
-        ImGui::End();
+        // ── ImGui frame ───────────────────────────────────────────────────────
+        ImGui_ImplOpenGL3_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
 
-        if (currentMode != MODE_MATERIAL) {
-            // reset to default gray
-            std::vector<glm::vec3> def(V.size(), glm::vec3(0.8f));
-            glBindBuffer(GL_ARRAY_BUFFER, CBO);
-            glBufferSubData(GL_ARRAY_BUFFER, 0, def.size() * sizeof(glm::vec3), def.data());
+        ImGui::SetNextWindowSize(ImVec2(280, 0), ImGuiCond_Once);
+        ImGui::Begin("Controls");
+
+        // --- Mesh selection ---------------------------------------------------
+        ImGui::Text("Mesh");
+        if (ImGui::RadioButton("3D", currentMeshType == MESH_3D)) {
+            if (currentMeshType != MESH_3D) {
+                loadMeshToGPU(OBJ_3D);
+                currentMeshType = MESH_3D;
+            }
+        }
+        ImGui::SameLine();
+        if (ImGui::RadioButton("2D", currentMeshType == MESH_2D)) {
+            if (currentMeshType != MESH_2D) {
+                loadMeshToGPU(OBJ_2D);
+                currentMeshType = MESH_2D;
+            }
         }
 
-        if (currentMode == MODE_MATERIAL) {
+        ImGui::Separator();
+        ImGui::Text("View Mode (or press W)");
+        if (ImGui::RadioButton("Face", currentViewMode == MODE_FACE)) { currentViewMode = MODE_FACE;      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); }
+        if (ImGui::RadioButton("Wireframe", currentViewMode == MODE_WIREFRAME)) { currentViewMode = MODE_WIREFRAME; glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); }
+        if (ImGui::RadioButton("Material", currentViewMode == MODE_MATERIAL)) { currentViewMode = MODE_MATERIAL;  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); }
+
+        ImGui::Separator();
+        ImGui::SliderFloat("Cut Z", &cutPlaneZ, -1.0f, 1.0f, "%.2f m");
+        ImGui::End();
+
+        // ---------------------------------------------------------------------
+        // Thickness stacked‑area plot if Material mode is active
+        if (currentViewMode == MODE_MATERIAL) {
             ImGui::Begin("Thickness Profile");
-            if (ImPlot::BeginPlot("##thickness", ImVec2(-1, 200))) {
-                ImPlot::SetupAxisLimits(ImAxis_X1, 0.0, carbonR.back(), ImPlotCond_Always);
-                ImPlot::SetupAxisLimits(ImAxis_Y1, robotLength, 0.0, ImPlotCond_Always);
+            if (ImPlot::BeginPlot("##profile", ImVec2(-1, 200))) {
+                ImPlot::SetupAxisLimits(ImAxis_X1, 0.0f, thermalR.back(), ImPlotCond_Always);
+                ImPlot::SetupAxisLimits(ImAxis_Y1, robotLength, 0.0f, ImPlotCond_Always);
                 ImPlot::SetupAxis(ImAxis_X1, "Radius (m)");
                 ImPlot::SetupAxis(ImAxis_Y1, "Height (m)", ImPlotAxisFlags_NoDecorations);
-                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(50, 100, 200, 100));
-                ImPlot::PlotShaded("Steel", steelR.data(), heights.data(), N);
-                ImPlot::PopStyleColor();
-                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(200, 130, 50, 100));
-                ImPlot::PlotShaded("Glue", glueR.data(), heights.data(), N);
-                ImPlot::PopStyleColor();
-                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(50, 200, 50, 100));
-                ImPlot::PlotShaded("Carbon", carbonR.data(), heights.data(), N);
-                ImPlot::PopStyleColor();
+
+                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(50, 100, 200, 100));   ImPlot::PlotShaded("Steel", steelR.data(), heights.data(), N);   ImPlot::PopStyleColor();
+                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(200, 130, 50, 100));   ImPlot::PlotShaded("Glue", glueR.data(), heights.data(), N);   ImPlot::PopStyleColor();
+                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(50, 200, 50, 100));    ImPlot::PlotShaded("Carbon", carbonR.data(), heights.data(), N);   ImPlot::PopStyleColor();
+                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(200, 50, 200, 100));   ImPlot::PlotShaded("Thermal", thermalR.data(), heights.data(), N);   ImPlot::PopStyleColor();
                 ImPlot::EndPlot();
             }
             ImGui::End();
@@ -245,42 +470,63 @@ int main() {
 
         ImGui::Render();
 
-        glm::vec3 tgt(panX, panY, 0);
-        float yR = glm::radians(camYaw), pR = glm::radians(camPitch);
-        glm::vec3 pos = tgt + glm::vec3(camDistance * cos(pR) * sin(yR), camDistance * sin(pR), camDistance * cos(pR) * cos(yR));
-        glm::mat4 view = glm::lookAt(pos, tgt, glm::vec3(0, 1, 0));
-        glm::mat4 proj = glm::perspective(glm::radians(60.0f), W / (float)H, 0.1f, 1000.0f);
+        // ── Camera matrices ───────────────────────────────────────────────────
+        glm::vec3 tgt(panX, panY, 0.0f);
+        float     yR = glm::radians(camYaw);
+        float     pR = glm::radians(camPitch);
+        glm::vec3 eye = tgt + glm::vec3(camDistance * cos(pR) * sin(yR),
+            camDistance * sin(pR),
+            camDistance * cos(pR) * cos(yR));
+        glm::mat4 view = glm::lookAt(eye, tgt, glm::vec3(0, 1, 0));
+        glm::mat4 proj = glm::perspective(glm::radians(60.0f), fbW / float(fbH), 0.1f, 1000.0f);
         glm::mat4 MVP = proj * view;
 
-        // Material coloring update
-        if (currentMode == MODE_MATERIAL) {
+        // ── Material colours ---------------------------------------------------
+        if (currentViewMode == MODE_MATERIAL) {
             std::vector<glm::vec3> matCols(V.size());
             float minX = 1e9f, maxX = -1e9f;
-            for (auto& v : V) { minX = glm::min(minX, v.x); maxX = glm::max(maxX, v.x); }
-            for (auto& F : mesh.faces) {
-                float s = ((V[F.v[0]].x + V[F.v[1]].x + V[F.v[2]].x) / 3.0f - minX) / (maxX - minX);
-                float tv = 0;
-                switch (F.mat) { case 0:tv = lookup(steel, s);break; case 1:tv = lookup(glue, s);break; case 2:tv = lookup(carbon, s);break; }
-                                       float tn = glm::clamp((tv - thickMin) / (thickMax - thickMin), 0.0f, 1.0f);
-                                       glm::vec3 col = (tn < 0.5f ? glm::mix(glm::vec3(0, 0, 1), glm::vec3(0, 1, 0), tn * 2)
-                                           : glm::mix(glm::vec3(0, 1, 0), glm::vec3(1, 0, 0), (tn - 0.5f) * 2));
-                                       matCols[F.v[0]] = col; matCols[F.v[1]] = col; matCols[F.v[2]] = col;
+            for (const auto& v : V) { minX = std::min(minX, v.x); maxX = std::max(maxX, v.x); }
+
+            for (const auto& f : F) {
+                float s = ((V[f.v[0]].x + V[f.v[1]].x + V[f.v[2]].x) / 3.0f - minX) / (maxX - minX);
+                float tv = 0.0f;
+                switch (f.mat) {
+                case 0: tv = interp1D(steel, s); break;
+                case 1: tv = interp1D(glue, s); break;
+                case 2: tv = interp1D(carbon, s); break;
+                default: break;
+                }
+                float tn = std::clamp((tv - thickMin) / (thickMax - thickMin), 0.0f, 1.0f);
+                glm::vec3 col = (tn < 0.5f)
+                    ? glm::mix(glm::vec3(0, 0, 1), glm::vec3(0, 1, 0), tn * 2.0f)
+                    : glm::mix(glm::vec3(0, 1, 0), glm::vec3(1, 0, 0), (tn - 0.5f) * 2.0f);
+                matCols[f.v[0]] = matCols[f.v[1]] = matCols[f.v[2]] = col;
             }
             glBindBuffer(GL_ARRAY_BUFFER, CBO);
             glBufferSubData(GL_ARRAY_BUFFER, 0, matCols.size() * sizeof(glm::vec3), matCols.data());
         }
+        else {
+            // plain grey for Face / Wireframe
+            std::vector<glm::vec3> grey(V.size(), glm::vec3(0.8f));
+            glBindBuffer(GL_ARRAY_BUFFER, CBO);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, grey.size() * sizeof(glm::vec3), grey.data());
+        }
 
-        glViewport(0, 0, W, H);
+        // ── Drawing ───────────────────────────────────────────────────────────
+        glViewport(0, 0, fbW, fbH);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
         glUseProgram(prog);
         glUniformMatrix4fv(locMVP, 1, GL_FALSE, glm::value_ptr(MVP));
-        glUniform4f(locClip, 0, 0, 1, -cutPlaneZ);
+        glUniform4f(locClip, 0.0f, 0.0f, 1.0f, -cutPlaneZ);
+
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, (GLsizei)I.size(), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);
 
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-        glfwSwapBuffers(w);
+        glfwSwapBuffers(win);
     }
+
     return 0;
 }
