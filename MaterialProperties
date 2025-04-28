@@ -1,0 +1,76 @@
+//This code is for the material propertie assignment. It creates hashmaps with the properties: thermal conductivity, specific heat, 
+//glass transition temperature, and density.
+
+#include <iostream>
+#include <unordered_map>
+#include <string>
+
+// Define a structure to store properties of each material
+struct Material {
+    double thermal_conductivity;      // k [W/m·K]
+    double specific_heat;             // cp [J/kg·K]
+    double glass_transition_temp;     // Tg or max temp [K]
+    double density;                   // ρ [kg/m³] (optional, may be -1 if not provided)
+};
+
+// Function to populate the material property map
+std::unordered_map<std::string, Material> createMaterialMap() {
+    std::unordered_map<std::string, Material> materialMap;
+
+    // Add Carbon Fiber
+    materialMap["carbon_fiber"] = {
+        500.0,    // thermal_conductivity
+        700.0,    // specific_heat
+        350.0,    // glass_transition_temp
+        -1.0      // density not specified
+    };
+
+    // Add Glue
+    materialMap["glue"] = {
+        200.0,
+        900.0,
+        400.0,
+        -1.0
+    };
+
+    // Add Steel
+    materialMap["steel"] = {
+        100.0,
+        500.0,
+        800.0,   // Treated as max temperature
+        -1.0
+    };
+
+    // Add Thermal Protection Layer (TPI)
+    materialMap["thermal_protection"] = {
+        0.2,
+        1200.0,
+        1200.0,
+        160.0    // Density is given
+    };
+
+    return materialMap;
+}
+
+int main() {
+    // Create and populate the material map
+    auto materialMap = createMaterialMap();
+
+    // Example: Print properties of carbon fiber
+    std::string materialName = "carbon_fiber";
+
+    if (materialMap.find(materialName) != materialMap.end()) {
+        Material mat = materialMap[materialName];
+        std::cout << "Properties of " << materialName << ":\n"
+                  << "  Thermal Conductivity: " << mat.thermal_conductivity << " W/m·K\n"
+                  << "  Specific Heat: " << mat.specific_heat << " J/kg·K\n"
+                  << "  Glass Transition Temp: " << mat.glass_transition_temp << " K\n"
+                  << "  Density: " 
+                  << (mat.density >= 0 ? std::to_string(mat.density) + " kg/m³" : "Not specified") 
+                  << "\n";
+    } else {
+        std::cout << "Material not found in map.\n";
+    }
+
+    return 0;
+}

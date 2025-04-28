@@ -1,0 +1,84 @@
+//ADD PARAGRAPH EXPLAINING WHAT CODE IS DOING
+//will need to adjust this code to be more applicable to given data structure
+
+
+#include <iostream>     // For standard input/output operations (e.g., std::cout)
+#include <fstream>      // For file input operations (e.g., std::ifstream)
+#include <vector>       // For using the std::vector container
+#include <sstream>      // For converting lines from the file into numbers
+#include <string>       // For working with text strings
+#include <algorithm>    // For sorting with std::sort
+
+
+// Define the total vertical height of the robot in meters
+const double ROBOT_HEIGHT = 2.5;
+
+// A structure to represent a single node (point) in 3D space
+// It also stores the normalized vertical coordinate (y value / robot height)
+struct Node {
+    double x, y, z;          // Original spatial coordinates of the node
+    double y_normalized;     // Normalized vertical height (range: 0 to 1)
+};
+
+// Function to read 3D coordinates from a file, normalize the height, and sort them
+std::vector<Node> parseAndNormalizeMesh(const std::string& filename) {
+    std::ifstream infile(filename);         // Open the input file
+    std::vector<Node> nodes;                // Vector to store all nodes
+    std::string line;                       // Holds each line from the file
+
+    // Check if the file opened successfully
+    if (!infile) {
+        std::cerr << "Error: Unable to open file " << filename << std::endl;
+        return nodes;  // Return an empty vector on failure
+    }
+
+    // Read the file line-by-line
+    while (std::getline(infile, line)) {
+        std::stringstream ss(line);  // Convert the line into a stream
+        double x, y, z;              // Temporary variables to store coordinates
+
+        // Extract x, y, and z values from the line
+        if (ss >> x >> y >> z) {
+            Node node;
+            node.x = x;              // Assign x coordinate
+            node.y = y;              // Assign y coordinate (vertical)
+            node.z = z;              // Assign z coordinate
+
+            // Normalize the y coordinate to be in [0, 1] range
+            node.y_normalized = y / ROBOT_HEIGHT;
+
+            // Add the node to the list
+            nodes.push_back(node);
+        }
+    }
+
+    // Once all nodes are read, sort them from lowest to highest normalized height
+    std::sort(nodes.begin(), nodes.end(), [](const Node& a, const Node& b) {
+        return a.y_normalized < b.y_normalized;
+    });
+
+    // Return the list of sorted, normalized nodes
+    return nodes;
+}
+
+int main() {
+    // Specify the file that contains the mesh data (replace with your actual file)
+    std::string filename = "robot_mesh.txt";
+
+    // Call the function to parse, normalize, and sort the mesh nodes
+    std::vector<Node> meshNodes = parseAndNormalizeMesh(filename);
+
+    // Output the result to the console for verification
+    std::cout << "Normalized heights of nodes (from toe to head):\n";
+
+    // Loop through the list and print each node's information
+    for (const auto& node : meshNodes) {
+        std::cout << "x: " << node.x 
+                  << ", y: " << node.y 
+                  << ", z: " << node.z 
+                  << ", y_normalized: " << node.y_normalized 
+                  << '\n';
+    }
+
+    return 0; 
+}
