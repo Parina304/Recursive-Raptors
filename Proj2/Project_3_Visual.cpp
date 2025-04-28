@@ -62,7 +62,7 @@ static float cutPlaneZ = 0.0f;   // in model space (metres)
 //--------------------------------------------------------------------------
 static std::vector<float> carbon, glue, steel;
 static float thickMin = 1e9f, thickMax = -1e9f;
-static std::vector<float> heights, steelR, glueR, carbonR, thermalR;
+static std::vector<float> heights, thermal, steelR, glueR, carbonR, thermalR;
 static const float robotLength = 2.5f;                   // m
 static std::vector<float> thermZ, thermT;                // thermal profile
 
@@ -86,10 +86,8 @@ GLuint createProgram();
 //--------------------------------------------------------------------------
 // CSV HELPERS (single‑column and two‑column)
 //--------------------------------------------------------------------------
-static std::vector<float> loadProfile1(const std::string& fname)
-{
-static std::vector<float> heights, steelR, glueR, carbonR;
-static const float robotLength = 2.5f;
+// static std::vector<float> heights, steelR, glueR, carbonR;
+// static const float robotLength = 2.5f;
 
 // makes excutable compatible in ./ or ./build  
 std::string PrependBasePath (const std::string& path){
@@ -107,8 +105,29 @@ std::string PrependBasePath (const std::string& path){
     }
 }
 
+// static std::vector<float> loadProfile1(const std::string& fname)
+// {
+//     std::vector<float> vals;
+//     std::ifstream in(fname);
+//     if (!in) {
+//         std::cerr << "[CSV] Cannot open " << fname << "\n";
+//         return vals;
+//     }
+//     std::string line; std::getline(in, line);              // skip header
+//     while (std::getline(in, line)) {
+//         std::istringstream ss(line);
+//         float s, v; char comma;
+//         ss >> s >> comma >> v;             // s is the 0…1 normalised height
+//         vals.push_back(v);
+//         thickMin = std::min(thickMin, v);
+//         thickMax = std::max(thickMax, v);
+//     }
+//     return vals;
+// }
+
+
 // Load two-column CSV (position,value)
-std::vector<float> loadProfile(const std::string& fname) {
+std::vector<float> loadProfile1(const std::string& fname) {
     std::vector<float> vals;
     std::ifstream in(fname);
     if (!in) {
@@ -279,12 +298,16 @@ GLuint createProgram()
 //--------------------------------------------------------------------------
 // GLFW CALLBACKS
 //--------------------------------------------------------------------------
-static void key_cb(GLFWwindow*, int key, int, int action, int)
+static void key_cb(GLFWwindow* window, int key, int, int action, int)
 {
-    if (action == GLFW_PRESS && key == GLFW_KEY_W) {
-        currentViewMode = ViewMode((currentViewMode + 1) % 3);
-        GLenum mode = (currentViewMode == MODE_WIREFRAME ? GL_LINE : GL_FILL);
-        glPolygonMode(GL_FRONT_AND_BACK, mode);
+    if (action == GLFW_PRESS) {
+        if(key == GLFW_KEY_W){
+            currentViewMode = ViewMode((currentViewMode + 1) % 3);
+            GLenum mode = (currentViewMode == MODE_WIREFRAME ? GL_LINE : GL_FILL);
+            glPolygonMode(GL_FRONT_AND_BACK, mode);
+        } else if (key == GLFW_KEY_ESCAPE || key == GLFW_KEY_Q){
+            glfwSetWindowShouldClose(window, GLFW_TRUE); // Signal to close the window
+        }
     }
 }
 
@@ -347,36 +370,37 @@ int main()
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     //------------------------------------------------------------------ CSV ----
-    carbon = loadProfile1("assets/csv/carbon_thickness.csv");
-    glue = loadProfile1("assets/csv/glue_thickness.csv");
-    steel = loadProfile1("assets/csv/steel_thickness.csv");
-    loadThermal("assets/csv/Thickness_1_hr.csv");
+    carbon = loadProfile1(PrependBasePath("assets/csv/carbon_thickness.csv"));
+    glue = loadProfile1(PrependBasePath("assets/csv/glue_thickness.csv"));
+    steel = loadProfile1(PrependBasePath("assets/csv/steel_thickness.csv"));
+    loadThermal(PrependBasePath("assets/csv/Thickness_1_hr.csv"));
 
     // Load CSV profiles from assets/csv
-    carbon = loadProfile(PrependBasePath("assets/csv/carbon_thickness.csv"));
-    glue = loadProfile(PrependBasePath("assets/csv/glue_thickness.csv"));
-    steel = loadProfile(PrependBasePath("assets/csv/steel_thickness.csv"));
+    // carbon = loadProfile(PrependBasePath("assets/csv/carbon_thickness.csv"));
+    // glue = loadProfile(PrependBasePath("assets/csv/glue_thickness.csv"));
+    // steel = loadProfile(PrependBasePath("assets/csv/steel_thickness.csv"));
     int N = (int)carbon.size();
     heights.resize(N);
+    thermal.resize(N);
     steelR.resize(N); glueR.resize(N); carbonR.resize(N); thermalR.resize(N);
 
     for (int i = 0; i < N; ++i) {
         float s = i / float(N - 1);
         heights[i] = s * robotLength;
+        thermal[i] = interpThermal(heights[i]);
         steelR[i] = steel[i] / 100.0f;
         glueR[i] = steelR[i] + glue[i] / 100.0f;
         carbonR[i] = glueR[i] + carbon[i] / 100.0f;
-        thermalR[i] = carbonR[i] + interpThermal(heights[i]) / 100.0f;
+        thermalR[i] = carbonR[i] + thermal[i] / 100.0f;
     }
 
     //----------------------------------------------------------------- OBJ ----
-    const std::string OBJ_3D = "assets/obj/humanoid_robot.obj";
-    const std::string OBJ_2D = "assets/obj/humanoid_robot_2d.obj";
+    const std::string OBJ_3D = PrependBasePath("assets/obj/humanoid_robot.obj");
+    const std::string OBJ_2D = PrependBasePath("assets/obj/humanoid_robot_2d.obj");
 
     if (!loadMeshToGPU(OBJ_3D)) return 1;          // start with 3‑D model
 
     //----------------------------------------------------------------- GLSL ----
-    }
 
     Mesh mesh;
     if (!mesh.loadOBJ(PrependBasePath("assets/obj/humanoid_robot_2d.obj"))) return 1;
@@ -466,6 +490,71 @@ int main()
                 ImPlot::EndPlot();
             }
             ImGui::End();
+            
+            ImGui::Begin("Thickness Profile");
+            if (ImPlot::BeginPlot("##profile", ImVec2(-1, 400))) {
+                // Set up axes
+                ImPlot::SetupAxisLimits(ImAxis_X1, 0.0f, 50, ImPlotCond_Always);
+                ImPlot::SetupAxisLimits(ImAxis_Y1, robotLength, 0.0f, ImPlotCond_Always);
+                ImPlot::SetupAxis(ImAxis_X1, "Radius (m)");
+                ImPlot::SetupAxis(ImAxis_Y1, "Height (m)");
+
+                // Plot steel as a line
+                ImPlot::PushStyleColor(ImPlotCol_Line, IM_COL32(50, 100, 200, 255)); // Blue
+                ImPlot::PlotLine("Steel", steel.data(), heights.data(), N);
+                ImPlot::PopStyleColor();
+
+                // Plot glue as a line
+                ImPlot::PushStyleColor(ImPlotCol_Line, IM_COL32(200, 130, 50, 255)); // Orange
+                ImPlot::PlotLine("Glue", glue.data(), heights.data(), N);
+                ImPlot::PopStyleColor();
+
+                // Plot carbon as a line
+                ImPlot::PushStyleColor(ImPlotCol_Line, IM_COL32(50, 200, 50, 255)); // Green
+                ImPlot::PlotLine("Carbon", carbon.data(), heights.data(), N);
+                ImPlot::PopStyleColor();
+
+                // Plot thermal as a line
+                ImPlot::PushStyleColor(ImPlotCol_Line, IM_COL32(200, 50, 200, 255)); // Purple
+                ImPlot::PlotLine("Thermal", thermal.data(), heights.data(), N);
+                ImPlot::PopStyleColor();
+
+                ImPlot::EndPlot();
+            }
+            ImGui::End();
+
+            ImGui::Begin("Thickness Profile");
+            if (ImPlot::BeginPlot("##profile", ImVec2(-1, 400))) {
+                // Set up axes
+                ImPlot::SetupAxisLimits(ImAxis_X1, 0.0f, 1, ImPlotCond_Always);
+                ImPlot::SetupAxisLimits(ImAxis_Y1, robotLength, 0.0f, ImPlotCond_Always);
+                ImPlot::SetupAxis(ImAxis_X1, "Radius (m)");
+                ImPlot::SetupAxis(ImAxis_Y1, "Height (m)");
+
+                // Plot steel as a line
+                ImPlot::PushStyleColor(ImPlotCol_Line, IM_COL32(50, 100, 200, 255)); // Blue
+                ImPlot::PlotLine("Steel", steelR.data(), heights.data(), N);
+                ImPlot::PopStyleColor();
+
+                // Plot glue as a line
+                ImPlot::PushStyleColor(ImPlotCol_Line, IM_COL32(200, 130, 50, 255)); // Orange
+                ImPlot::PlotLine("Glue", glueR.data(), heights.data(), N);
+                ImPlot::PopStyleColor();
+
+                // Plot carbon as a line
+                ImPlot::PushStyleColor(ImPlotCol_Line, IM_COL32(50, 200, 50, 255)); // Green
+                ImPlot::PlotLine("Carbon", carbonR.data(), heights.data(), N);
+                ImPlot::PopStyleColor();
+
+                // Plot thermal as a line
+                ImPlot::PushStyleColor(ImPlotCol_Line, IM_COL32(200, 50, 200, 255)); // Purple
+                ImPlot::PlotLine("Thermal", thermalR.data(), heights.data(), N);
+                ImPlot::PopStyleColor();
+
+                ImPlot::EndPlot();
+            }
+            ImGui::End();
+
         }
 
         ImGui::Render();
