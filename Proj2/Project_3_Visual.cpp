@@ -13,6 +13,12 @@
 //   • Scroll          : dolly zoom
 //--------------------------------------------------------------------------
 
+#ifdef _WIN32
+#define BASE_PATH "./"
+#else
+#define BASE_PATH "../"
+#endif
+
 #include "mesh_lib.h"          // simple OBJ + Face data structure (user‑supplied)
 
 #include <iostream>
@@ -20,7 +26,7 @@
 #include <sstream>
 #include <vector>
 #include <algorithm>
-#include <unistd.h>
+// #include <unistd.h>
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -91,18 +97,19 @@ GLuint createProgram();
 
 // makes excutable compatible in ./ or ./build  
 std::string PrependBasePath (const std::string& path){
-    char cwd[1024];
-    if (getcwd(cwd, sizeof(cwd)) != nullptr) {
-        std::string currentDir(cwd);
-        if (currentDir.find("/build") != std::string::npos) {
-            return "../" + path;  // If in build folder, go up one level
-        } else {
-            return "./" + path;   // Otherwise, use the current directory
-        }
-    } else {
-        std::cerr << "Error: Unable to get current working directory.\n";
-        return "./" + path;  // Default to current directory
-    }
+    // char cwd[1024];
+    // if (getcwd(cwd, sizeof(cwd)) != nullptr) {
+    //     std::string currentDir(cwd);
+    //     if (currentDir.find("/build") != std::string::npos) {
+    //         return "../" + path;  // If in build folder, go up one level
+    //     } else {
+    //         return "./" + path;   // Otherwise, use the current directory
+    //     }
+    // } else {
+    //     std::cerr << "Error: Unable to get current working directory.\n";
+    //     return "./" + path;  // Default to current directory
+    // }
+    return BASE_PATH + path;
 }
 
 // static std::vector<float> loadProfile1(const std::string& fname)
