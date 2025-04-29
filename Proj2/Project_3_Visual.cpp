@@ -13,6 +13,12 @@
 //   • Scroll          : dolly zoom
 //--------------------------------------------------------------------------
 
+#ifdef _WIN32
+#define BASE_PATH "./"
+#else
+#define BASE_PATH "../"
+#endif
+
 #include "mesh_lib.h"          // simple OBJ + Face data structure (user‑supplied)
 #include <iostream>
 #include <fstream>
@@ -323,10 +329,10 @@ int main()
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     //------------------------------------------------------------------ CSV ----
-    carbon = loadProfile1("assets/csv/carbon_thickness.csv");
-    glue = loadProfile1("assets/csv/glue_thickness.csv");
-    steel = loadProfile1("assets/csv/steel_thickness.csv");
-    loadThermal("assets/csv/Thickness_1_hr.csv");
+    carbon = loadProfile1("../assets/csv/carbon_thickness.csv");
+    glue = loadProfile1("../assets/csv/glue_thickness.csv");
+    steel = loadProfile1("../assets/csv/steel_thickness.csv");
+    loadThermal("../assets/csv/Thickness_1_hr.csv");
 
     int N = (int)carbon.size();
     heights.resize(N);
@@ -342,8 +348,8 @@ int main()
     }
 
     //----------------------------------------------------------------- OBJ ----
-    const std::string OBJ_3D = "assets/obj/humanoid_robot.obj";
-    const std::string OBJ_2D = "assets/obj/humanoid_robot_2d.obj";
+    const std::string OBJ_3D = "../assets/obj/humanoid_robot.obj";
+    const std::string OBJ_2D = "../assets/obj/humanoid_robot_2d.obj";
 
     if (!loadMeshToGPU(OBJ_3D)) return 1;          // start with 3‑D model
 
