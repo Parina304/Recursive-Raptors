@@ -409,28 +409,28 @@ int main()
 
     //----------------------------------------------------------------- GLSL ----
 
-    Mesh mesh;
-    if (!mesh.loadOBJ(PrependBasePath("assets/obj/humanoid_robot_2d.obj"))) return 1;
-    float minZ = 1e9f, maxZ = -1e9f;
-    for (auto& v : mesh.vertices) { minZ = glm::min(minZ, v.z); maxZ = glm::max(maxZ, v.z); }
-    cutPlaneZ = 0.0f;
+    // Mesh mesh;
+    // if (!mesh.loadOBJ(PrependBasePath("assets/obj/humanoid_robot_2d.obj"))) return 1;
+    // float minZ = 1e9f, maxZ = -1e9f;
+    // for (auto& v : mesh.vertices) { minZ = glm::min(minZ, v.z); maxZ = glm::max(maxZ, v.z); }
+    // cutPlaneZ = 0.0f;
 
-    auto& V = mesh.vertices;
-    std::vector<unsigned int> I; I.reserve(mesh.faces.size() * 3);
-    for (auto& F : mesh.faces) { I.push_back(F.v[0]);I.push_back(F.v[1]);I.push_back(F.v[2]); }
-    GLuint VAO, VBO, CBO, EBO;
-    glGenVertexArrays(1, &VAO); glGenBuffers(1, &VBO); glGenBuffers(1, &CBO); glGenBuffers(1, &EBO);
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, V.size() * sizeof(glm::vec3), V.data(), GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0); glEnableVertexAttribArray(0);
-    std::vector<glm::vec3> cols(V.size(), glm::vec3(0.8f));
-    glBindBuffer(GL_ARRAY_BUFFER, CBO);
-    glBufferData(GL_ARRAY_BUFFER, cols.size() * sizeof(glm::vec3), cols.data(), GL_DYNAMIC_DRAW);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0); glEnableVertexAttribArray(1);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, I.size() * sizeof(unsigned int), I.data(), GL_STATIC_DRAW);
-    glBindVertexArray(0);
+    // auto& V = mesh.vertices;
+    // std::vector<unsigned int> I; I.reserve(mesh.faces.size() * 3);
+    // for (auto& F : mesh.faces) { I.push_back(F.v[0]);I.push_back(F.v[1]);I.push_back(F.v[2]); }
+    // GLuint VAO, VBO, CBO, EBO;
+    // glGenVertexArrays(1, &VAO); glGenBuffers(1, &VBO); glGenBuffers(1, &CBO); glGenBuffers(1, &EBO);
+    // glBindVertexArray(VAO);
+    // glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    // glBufferData(GL_ARRAY_BUFFER, V.size() * sizeof(glm::vec3), V.data(), GL_STATIC_DRAW);
+    // glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0); glEnableVertexAttribArray(0);
+    // std::vector<glm::vec3> cols(V.size(), glm::vec3(0.8f));
+    // glBindBuffer(GL_ARRAY_BUFFER, CBO);
+    // glBufferData(GL_ARRAY_BUFFER, cols.size() * sizeof(glm::vec3), cols.data(), GL_DYNAMIC_DRAW);
+    // glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0); glEnableVertexAttribArray(1);
+    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, I.size() * sizeof(unsigned int), I.data(), GL_STATIC_DRAW);
+    // glBindVertexArray(0);
 
     GLuint prog = createProgram();
     GLint  locMVP = glGetUniformLocation(prog, "uMVP");
