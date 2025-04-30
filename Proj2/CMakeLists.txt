@@ -22,10 +22,8 @@ if (NOT Boost_FOUND)
 	return()
 endif()
 
-# find GLUT
 find_package(OpenGL REQUIRED)
 find_package(GLUT REQUIRED)
-find_package(cppcolormap REQUIRED)
 include_directories( ${OPENGL_INCLUDE_DIRS}  ${GLUT_INCLUDE_DIRS} )
 
 
@@ -55,4 +53,4 @@ target_link_libraries(mesh_demo PUBLIC mesh_lib mesh_merge CGAL::CGAL)
 target_link_libraries(mesh_demo_union PUBLIC mesh_lib mesh_merge CGAL::CGAL)
 target_link_libraries(mesh_demo_vol PUBLIC mesh_lib mesh_merge CGAL::CGAL)
 
-target_link_libraries(vizmesh ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} ${cppcolormap_LIBRARY})
+target_link_libraries(vizmesh ${OPENGL_LIBRARIES} ${GLUT_LIBRARY} )

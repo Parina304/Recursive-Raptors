@@ -1,2 +1,0 @@
-C:\msys64\mingw64\bin\ar.exe qc libmesh_lib.a CMakeFiles/mesh_lib.dir/mesh_lib/mesh_lib.cpp.obj
-C:\msys64\mingw64\bin\ranlib.exe libmesh_lib.a

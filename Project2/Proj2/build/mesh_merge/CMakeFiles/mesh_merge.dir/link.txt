@@ -1,2 +1,0 @@
-C:\msys64\mingw64\bin\ar.exe qc libmesh_merge.a CMakeFiles/mesh_merge.dir/mesh_merge.cpp.obj
-C:\msys64\mingw64\bin\ranlib.exe libmesh_merge.a
