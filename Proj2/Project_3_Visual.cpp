@@ -68,7 +68,7 @@ static float cutPlaneZ = 0.0f;   // in model space (metres)
 //--------------------------------------------------------------------------
 static std::vector<float> carbon, glue, steel;
 static float thickMin = 1e9f, thickMax = -1e9f;
-static std::vector<float> heights, thermal, steelR, glueR, carbonR, thermalR;
+static std::vector<float> heights, thermal, steel_metric, glueR, carbonR, thermalR;
 static const float robotLength = 2.5f;                   // m
 static std::vector<float> thermZ, thermT;                // thermal profile
 
@@ -133,8 +133,10 @@ static void loadThermal(const std::string& fname)
 }
 
 // Linear look‑ups for material and thermal profiles
+// s shold be float between 0.0 and 1.0, and will be clamped to that interval if it exceeds
 static float interp1D(const std::vector<float>& arr, float s)
 {
+    s = std::clamp(s, 0.f, 1.f);
     if (arr.empty()) return 0.0f;
     float idx = s * (arr.size() - 1);
     int   i0 = (int)std::floor(idx);
@@ -354,14 +356,14 @@ int main()
     int N = (int)carbon.size();
     heights.resize(N);
     thermal.resize(N);
-    steelR.resize(N); glueR.resize(N); carbonR.resize(N); thermalR.resize(N);
+    steel_metric.resize(N); glueR.resize(N); carbonR.resize(N); thermalR.resize(N);
 
     for (int i = 0; i < N; ++i) {
         float s = i / float(N - 1);
         heights[i] = s * robotLength;
         thermal[i] = interpThermal(heights[i]);
-        steelR[i] = steel[i] / 100.0f;
-        glueR[i] = steelR[i] + glue[i] / 100.0f;
+        steel_metric[i] = steel[i] / 100.0f;
+        glueR[i] = steel_metric[i] + glue[i] / 100.0f;
         carbonR[i] = glueR[i] + carbon[i] / 100.0f;
         thermalR[i] = carbonR[i] + thermal[i] / 100.0f;
     }
@@ -426,27 +428,39 @@ int main()
         // Thickness stacked‑area plot if Material mode is active
         if (currentViewMode == MODE_MATERIAL) {
             ImGui::Begin("Thickness Profile");
-            if (ImPlot::BeginPlot("##profile", ImVec2(-1, 300))) {
+            if (ImPlot::BeginPlot("##profile_stacked", ImVec2(-1, 300))) {
                 ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0f, *std::max_element(thermalR.begin(), thermalR.end()), ImPlotCond_Always);
                 ImPlot::SetupAxisLimits(ImAxis_X1, robotLength, 0.0f, ImPlotCond_Always);
-                ImPlot::SetupAxis(ImAxis_Y1, "Radius (m)");
+                ImPlot::SetupAxis(ImAxis_Y1, "Thickness (m)");
                 // ImPlot::SetupAxis(ImAxis_X1, "Height (m)", ImPlotAxisFlags_NoDecorations);
                 ImPlot::SetupAxis(ImAxis_X1, "Height (m)");
 
-                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(200,50, 200,100));   ImPlot::PlotShaded("TPS", heights.data(), thermalR.data(), N);   ImPlot::PopStyleColor();
-                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(50, 200,50, 100));   ImPlot::PlotShaded("Carbon", heights.data(), carbonR.data(), N);   ImPlot::PopStyleColor();
-                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(200,130,50, 100));   ImPlot::PlotShaded("Glue", heights.data(), glueR.data(), N);   ImPlot::PopStyleColor();
-                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(50, 100,200,100));   ImPlot::PlotShaded("Steel", heights.data(), steelR.data(), N);   ImPlot::PopStyleColor();
+                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(200,50, 200,255));   
+                ImPlot::PlotShaded("TPS", heights.data(), thermalR.data(), N);   
+                ImPlot::PopStyleColor();
+
+                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(50, 200,50, 255));
+                ImPlot::PlotShaded("Carbon", heights.data(), carbonR.data(), N);
+                ImPlot::PopStyleColor();
+
+                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(200,130,50, 255));   
+                ImPlot::PlotShaded("Glue", heights.data(), glueR.data(), N);   
+                ImPlot::PopStyleColor();
+                
+                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(50, 100,200,255));   
+                ImPlot::PlotShaded("Steel", heights.data(), steel_metric.data(), N);   
+                ImPlot::PopStyleColor();
+
                 ImPlot::EndPlot();
             }
             ImGui::End();
             
             ImGui::Begin("Thickness Profile");
-            if (ImPlot::BeginPlot("##profile", ImVec2(-1, 300))) {
+            if (ImPlot::BeginPlot("##profile_separate", ImVec2(-1, 300))) {
                 // Set up axes
                 ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0f, *std::max_element(thermal.begin(), thermal.end()), ImPlotCond_Always);
                 ImPlot::SetupAxisLimits(ImAxis_X1, robotLength, 0.0f, ImPlotCond_Always);
-                ImPlot::SetupAxis(ImAxis_Y1, "Radius (m)");
+                ImPlot::SetupAxis(ImAxis_Y1, "Thickness (m)");
                 ImPlot::SetupAxis(ImAxis_X1, "Height (m)");
 
                 // Plot steel as a line
@@ -522,27 +536,49 @@ int main()
 
         // ── Material colours ---------------------------------------------------
         if (currentViewMode == MODE_MATERIAL) {
-            std::vector<glm::vec3> matCols(V.size());
+            std::vector<glm::vec3> vertex_colors(V.size());
             float minX = 1e9f, maxX = -1e9f;
-            for (const auto& v : V) { minX = std::min(minX, v.x); maxX = std::max(maxX, v.x); }
+            float minY = 1e9f, maxY = -1e9f;
+            float minZ = 1e9f, maxZ = -1e9f;
+            for (const auto& v : V) {
+                minX = std::min(minX, v.x); 
+                maxX = std::max(maxX, v.x);
+                minY = std::min(minY, v.y); 
+                maxY = std::max(maxY, v.y); 
+                minZ = std::min(minZ, v.z); 
+                maxZ = std::max(maxX, v.z); 
+            }
 
-            for (const auto& f : F) {
-                float s = ((V[f.v[0]].x + V[f.v[1]].x + V[f.v[2]].x) / 3.0f - minX) / (maxX - minX);
-                float tv = 0.0f;
-                switch (f.mat) {
-                case 0: tv = interp1D(steel, s); break;
-                case 1: tv = interp1D(glue, s); break;
-                case 2: tv = interp1D(carbon, s); break;
-                default: break;
-                }
-                float tn = std::clamp((tv - thickMin) / (thickMax - thickMin), 0.0f, 1.0f);
+            // for (const auto& f : F) {
+            //     float s = ((V[f.v[0]].x + V[f.v[1]].x + V[f.v[2]].x) / 3.0f - minX) / (maxX - minX);
+            //     float tv = 0.0f;
+            //     switch (f.mat) {
+            //     case 0: tv = interp1D(thermal, s); break;
+            //     case 1: tv = interp1D(glue, s); break;
+            //     case 2: tv = interp1D(carbon, s); break;
+            //     default: break;
+            //     }
+            //     float tn = std::clamp((tv - thickMin) / (thickMax - thickMin), 0.0f, 1.0f);
+            //     glm::vec3 col = (tn < 0.5f)
+            //         ? glm::mix(glm::vec3(0, 0, 1), glm::vec3(0, 1, 0), tn * 2.0f)
+            //         : glm::mix(glm::vec3(0, 1, 0), glm::vec3(1, 0, 0), (tn - 0.5f) * 2.0f);
+
+            //     vertex_colors[f.v[0]] = vertex_colors[f.v[1]] = vertex_colors[f.v[2]] = col;
+            // }
+            
+            for (int i = 0; i < V.size(); i++) {
+                const auto& v = V[i];
+                float tv = interp1D(thermal, v.z);
+                float tn = std::clamp((v.y - minY) / (maxY - minY), 0.0f, 1.0f);
                 glm::vec3 col = (tn < 0.5f)
                     ? glm::mix(glm::vec3(0, 0, 1), glm::vec3(0, 1, 0), tn * 2.0f)
                     : glm::mix(glm::vec3(0, 1, 0), glm::vec3(1, 0, 0), (tn - 0.5f) * 2.0f);
-                matCols[f.v[0]] = matCols[f.v[1]] = matCols[f.v[2]] = col;
+
+                vertex_colors[i] = col;
             }
+
             glBindBuffer(GL_ARRAY_BUFFER, CBO);
-            glBufferSubData(GL_ARRAY_BUFFER, 0, matCols.size() * sizeof(glm::vec3), matCols.data());
+            glBufferSubData(GL_ARRAY_BUFFER, 0, vertex_colors.size() * sizeof(glm::vec3), vertex_colors.data());
         }
         else {
             // plain grey for Face / Wireframe
@@ -551,13 +587,14 @@ int main()
             glBufferSubData(GL_ARRAY_BUFFER, 0, grey.size() * sizeof(glm::vec3), grey.data());
         }
 
-        // ── Drawing ───────────────────────────────────────────────────────────
+        // ── Drawing Mesh ───────────────────────────────────────────────────────────
         glViewport(0, 0, fbW, fbH);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(prog);
         glUniformMatrix4fv(locMVP, 1, GL_FALSE, glm::value_ptr(MVP));
         glUniform4f(locClip, 0.0f, 0.0f, 1.0f, -cutPlaneZ);
+        
 
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, (GLsizei)I.size(), GL_UNSIGNED_INT, 0);
