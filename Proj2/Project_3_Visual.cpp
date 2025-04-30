@@ -89,6 +89,11 @@ bool  loadMeshToGPU(const std::string& path); // used every time mesh changes
 GLuint compileShader(GLenum, const char*);
 GLuint createProgram();
 
+// Really short Functions
+#define Min(arr) *std::min_element(arr.begin(), arr.end())
+#define Max(arr) *std::max_element(arr.begin(), arr.end())
+#define Normalize(elem, arr) std::clamp((elem - *std::min_element(arr.begin(), arr.end()) / (*std::max_element(arr.begin(), arr.end()) - *std::min_element(arr.begin(), arr.end()))), 0.f, 1.f)
+
 //--------------------------------------------------------------------------
 // CSV HELPERS (single‑column and two‑column)
 //--------------------------------------------------------------------------
@@ -568,11 +573,18 @@ int main()
             
             for (int i = 0; i < V.size(); i++) {
                 const auto& v = V[i];
-                float tv = interp1D(thermal, v.z);
-                float tn = std::clamp((v.y - minY) / (maxY - minY), 0.0f, 1.0f);
-                glm::vec3 col = (tn < 0.5f)
-                    ? glm::mix(glm::vec3(0, 0, 1), glm::vec3(0, 1, 0), tn * 2.0f)
-                    : glm::mix(glm::vec3(0, 1, 0), glm::vec3(1, 0, 0), (tn - 0.5f) * 2.0f);
+                float normalized_y_at_v = (v.y - minY) / (maxY - minY);
+                float tps_at_v = interp1D(thermal, v.y);
+                std::cout << normalized_y_at_v << " " << tps_at_v << " " << 
+                *std::min_element(thermal.begin(), thermal.end()) << " " << 
+                *std::max_element(thermal.begin(), thermal.end()) << "\n";
+
+                float normalized_tps_at_v = Normalize(tps_at_v, thermal);
+                // float tv = interp1D(thermal, v.z);
+                // float tn = std::clamp((v.y - minY) / (maxY - minY), 0.0f, 1.0f);
+                glm::vec3 col = (normalized_tps_at_v < 0.5f)
+                    ? glm::mix(glm::vec3(0, 0, 1), glm::vec3(0, 1, 0), normalized_tps_at_v * 2.0f)
+                    : glm::mix(glm::vec3(0, 1, 0), glm::vec3(1, 0, 0), (normalized_tps_at_v - 0.5f) * 2.0f);
 
                 vertex_colors[i] = col;
             }
