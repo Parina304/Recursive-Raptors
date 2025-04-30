@@ -1,2 +1,0 @@
-﻿  Viz_Mesh.cpp
-D:\MEEN\Semester_2\Applied_Computing_Concepts\Projects\Project_2\Visualization\Visualization_Main\Viz_Mesh\Viz_Mesh.cpp(4,10): error C1083: Cannot open include file: 'glut.h': No such file or directory
