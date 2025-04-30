@@ -38,6 +38,9 @@
 #include "imgui_impl_opengl3.h"
 #include "implot.h"
 
+
+
+
 //--------------------------------------------------------------------------
 // ENUMERATIONS
 //--------------------------------------------------------------------------
@@ -99,7 +102,7 @@ GLuint createProgram();
 //--------------------------------------------------------------------------
 
 // makes excutable compatible in ./ or ./build  
-std::string PrependBasePath (const std::string& path){
+std::string PrependBasePath(const std::string& path) {
     return BASE_PATH + path;
 }
 
@@ -314,35 +317,71 @@ GLuint createProgram()
     glDeleteShader(fs);
     return p;
 }
+const std::string OBJ_TPS = PrependBasePath("assets/obj/humanoid_robot_3d_thickened_scaled_3_hr.obj");
 
 //--------------------------------------------------------------------------
 // GLFW CALLBACKS
 //--------------------------------------------------------------------------
-static void key_cb(GLFWwindow* window, int key, int, int action, int)
+static void key_cb(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/)
 {
-    if (action == GLFW_PRESS) {
-        if(key == GLFW_KEY_W){
-            currentViewMode = ViewMode((currentViewMode + 1) % 3);
-            GLenum mode = (currentViewMode == MODE_WIREFRAME ? GL_LINE : GL_FILL);
-            glPolygonMode(GL_FRONT_AND_BACK, mode);
-        } else if (key == GLFW_KEY_ESCAPE || key == GLFW_KEY_Q){
-            glfwSetWindowShouldClose(window, GLFW_TRUE); // Signal to close the window
-        } else if (key == GLFW_KEY_F){
-            frameMeshOnLoad();
+    if (action != GLFW_PRESS)
+        return;
+
+    if (key == GLFW_KEY_W)
+    {
+        // 1) cycle Face→Wireframe→Material
+        currentViewMode = ViewMode((currentViewMode + 1) % 3);
+
+        // 2) set OpenGL fill/line
+        GLenum mode = (currentViewMode == MODE_WIREFRAME ? GL_LINE : GL_FILL);
+        glPolygonMode(GL_FRONT_AND_BACK, mode);
+
+        // 3) if we just switched into Material, force-load the TPS-2D mesh
+        if (currentViewMode == MODE_MATERIAL && currentMeshType != MESH_TPS)
+        {
+            if (loadMeshToGPU(OBJ_TPS))
+            {
+                currentMeshType = MESH_TPS;
+                frameMeshOnLoad();
+            }
+            else
+            {
+                std::cerr << "[Mesh] failed to load TPS-2D on W→Material\n";
+            }
         }
+    }
+    else if (key == GLFW_KEY_F)
+    {
+        frameMeshOnLoad();
+    }
+    else if (key == GLFW_KEY_ESCAPE || key == GLFW_KEY_Q)
+    {
+        glfwSetWindowShouldClose(window, GLFW_TRUE);
     }
 }
 
+
 static void mouse_btn_cb(GLFWwindow*, int button, int action, int)
 {
-    if (button == GLFW_MOUSE_BUTTON_LEFT)  leftMouse = (action == GLFW_PRESS);
-    if (button == GLFW_MOUSE_BUTTON_RIGHT) rightMouse = (action == GLFW_PRESS);
-}
+    // if mouse is over any ImGui window or plot, do not start/stop camera drag
+    if (ImGui::GetIO().WantCaptureMouse)
+        return;
 
+    if (button == GLFW_MOUSE_BUTTON_LEFT)
+        leftMouse = (action == GLFW_PRESS);
+    if (button == GLFW_MOUSE_BUTTON_RIGHT)
+        rightMouse = (action == GLFW_PRESS);
+}
 static void cursor_cb(GLFWwindow*, double x, double y)
 {
-    double dx = x - lastX, dy = y - lastY;
-    lastX = x; lastY = y;
+    // ignore camera motion when interacting with UI
+    if (ImGui::GetIO().WantCaptureMouse)
+        return;
+
+    double dx = x - lastX;
+    double dy = y - lastY;
+    lastX = x;
+    lastY = y;
 
     if (leftMouse) {
         camYaw += float(dx) * 0.3f;
@@ -355,9 +394,12 @@ static void cursor_cb(GLFWwindow*, double x, double y)
         panY += float(dy) * s;
     }
 }
-
 static void scroll_cb(GLFWwindow*, double, double yoff)
 {
+    // ignore zoom when over UI
+    if (ImGui::GetIO().WantCaptureMouse)
+        return;
+
     camDistance *= (1.0f - float(yoff) * 0.1f);
     camDistance = std::max(camDistance, 0.1f);
 }
@@ -449,47 +491,46 @@ int main()
         ImGui::Begin("Controls");
 
         // --- Mesh selection ---------------------------------------------------
+        
+        ImGui::BeginDisabled(currentViewMode == MODE_MATERIAL);
         ImGui::Text("Mesh");
         if (ImGui::RadioButton("3D", currentMeshType == MESH_3D)) {
-            if (currentMeshType != MESH_3D) {
-                loadMeshToGPU(OBJ_3D);
-                currentMeshType = MESH_3D;
-                //frameMeshOnLoad();
-            }
+            loadMeshToGPU(OBJ_3D);
+            currentMeshType = MESH_3D;
         }
         ImGui::SameLine();
         if (ImGui::RadioButton("2D", currentMeshType == MESH_2D)) {
-            if (currentMeshType != MESH_2D) {
-                loadMeshToGPU(OBJ_2D);
-                currentMeshType = MESH_2D;
-                //frameMeshOnLoad();
-            }
+            loadMeshToGPU(OBJ_2D);
+            currentMeshType = MESH_2D;
         }
         ImGui::SameLine();
-        // — new TPS button —
         if (ImGui::RadioButton("Visualize TPS", currentMeshType == MESH_TPS)) {
-            if (currentMeshType != MESH_TPS) {
-                if (loadMeshToGPU(OBJ_TPS)) {
-                    currentMeshType = MESH_TPS;
-                    std::cout << "[Mesh] TPS loaded: "
-                        << V.size() << " verts, "
-                        << F.size() << " faces\n";
-                }
-                else {
-                    std::cerr << "[Mesh] Failed to load TPS mesh\n";
-                }
-                //frameMeshOnLoad();
-            }
-
+            loadMeshToGPU(OBJ_TPS);
+            currentMeshType = MESH_TPS;
         }
+        ImGui::EndDisabled();
 
         ImGui::Separator();
-        if (ImGui::Button("Zoom to Fit")) { frameMeshOnLoad(); }
-        ImGui::Text("View Mode (or press W)");
-        if (ImGui::RadioButton("Face", currentViewMode == MODE_FACE)) { currentViewMode = MODE_FACE;      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); }
-        if (ImGui::RadioButton("Wireframe", currentViewMode == MODE_WIREFRAME)) { currentViewMode = MODE_WIREFRAME; glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); }
-        if (ImGui::RadioButton("Material", currentViewMode == MODE_MATERIAL)) { currentViewMode = MODE_MATERIAL;  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); }
-
+        if (ImGui::Button("Zoom to Fit (F)")) { frameMeshOnLoad(); }
+        ImGui::Text("View Mode (Switch using 'W')");
+        if (ImGui::RadioButton("Face", currentViewMode == MODE_FACE)) {
+    currentViewMode = MODE_FACE;
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+}
+if (ImGui::RadioButton("Wireframe", currentViewMode == MODE_WIREFRAME)) {
+    currentViewMode = MODE_WIREFRAME;
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+}
+if (ImGui::RadioButton("Material", currentViewMode == MODE_MATERIAL)) {
+    currentViewMode = MODE_MATERIAL;
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    // automatically switch mesh to TPS-2D:
+    if (currentMeshType != MESH_TPS) {
+      loadMeshToGPU(OBJ_TPS);
+      currentMeshType = MESH_TPS;
+      frameMeshOnLoad();
+    }
+}
         ImGui::Separator();
         ImGui::SliderFloat("Cut Z", &cutPlaneZ, -1.0f, 1.0f, "%.2f m");
         ImGui::End();
@@ -505,26 +546,26 @@ int main()
                 // ImPlot::SetupAxis(ImAxis_X1, "Height (m)", ImPlotAxisFlags_NoDecorations);
                 ImPlot::SetupAxis(ImAxis_X1, "Height (m)");
 
-                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(200,50, 200,255));   
-                ImPlot::PlotShaded("TPS", heights.data(), thermalR.data(), N);   
+                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(200, 50, 200, 255));
+                ImPlot::PlotShaded("TPS", heights.data(), thermalR.data(), N);
                 ImPlot::PopStyleColor();
 
-                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(50, 200,50, 255));
+                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(50, 200, 50, 255));
                 ImPlot::PlotShaded("Carbon", heights.data(), carbonR.data(), N);
                 ImPlot::PopStyleColor();
 
-                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(200,130,50, 255));   
-                ImPlot::PlotShaded("Glue", heights.data(), glueR.data(), N);   
+                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(200, 130, 50, 255));
+                ImPlot::PlotShaded("Glue", heights.data(), glueR.data(), N);
                 ImPlot::PopStyleColor();
-                
-                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(50, 100,200,255));   
-                ImPlot::PlotShaded("Steel", heights.data(), steel_metric.data(), N);   
+
+                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(50, 100, 200, 255));
+                ImPlot::PlotShaded("Steel", heights.data(), steel_metric.data(), N);
                 ImPlot::PopStyleColor();
 
                 ImPlot::EndPlot();
             }
             ImGui::End();
-            
+
             ImGui::Begin("Thickness Profile");
             if (ImPlot::BeginPlot("##profile_separate", ImVec2(-1, 300))) {
                 // Set up axes
@@ -613,12 +654,12 @@ int main()
             float minY = 1e9f, maxY = -1e9f;
             float minZ = 1e9f, maxZ = -1e9f;
             for (const auto& v : V) {
-                minX = std::min(minX, v.x); 
+                minX = std::min(minX, v.x);
                 maxX = std::max(maxX, v.x);
-                minY = std::min(minY, v.y); 
-                maxY = std::max(maxY, v.y); 
-                minZ = std::min(minZ, v.z); 
-                maxZ = std::max(maxX, v.z); 
+                minY = std::min(minY, v.y);
+                maxY = std::max(maxY, v.y);
+                minZ = std::min(minZ, v.z);
+                maxZ = std::max(maxX, v.z);
             }
 
             // for (const auto& f : F) {
@@ -637,7 +678,7 @@ int main()
 
             //     vertex_colors[f.v[0]] = vertex_colors[f.v[1]] = vertex_colors[f.v[2]] = col;
             // }
-            
+
             for (int i = 0; i < V.size(); i++) {
                 const auto& v = V[i];
                 float normalized_y_at_v = (v.y - minY) / (maxY - minY);
@@ -679,7 +720,7 @@ int main()
         glUseProgram(prog);
         glUniformMatrix4fv(locMVP, 1, GL_FALSE, glm::value_ptr(MVP));
         glUniform4f(locClip, 0.0f, 0.0f, 1.0f, -cutPlaneZ);
-        
+
 
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, (GLsizei)I.size(), GL_UNSIGNED_INT, 0);
