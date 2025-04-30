@@ -70,14 +70,14 @@ const MaterialProperties GLUE {
     200,   // Thermal conductivity: 200 W/m*K
     900,   // Specific heat capacity: 900 J/Kg*K
     400,   // Glass transition temperature: 400K
-    7850   // Density: 7850 kg/m^3
+    1300   // Density: 1300 kg/m^3
 };
 
 const MaterialProperties STEEL {
     100,   // Thermal conductivity: 100 W/m*K
     500,   // Specific heat capacity: 500 J/Kg*K
     800,   // Maximum allowable temperature: 800K
-    1300   // Density: 1300 kg/m^3
+    7850   // Density: 7850 kg/m^3
 };
 
 
@@ -110,14 +110,11 @@ std::vector<double> thomas_algorithm(const std::vector<double>& a,
     return x;
 }
 
-// Solve 1D heat conduction through the thermal protection material
-vector<double> calculateTempDistribution(double protectionThickness, double missionDuration, double dt, double dx, double initialExternalTemp) {
-    double k = THERMAL_PROTECTION.thermalConductivity;
-    double rho = THERMAL_PROTECTION.density;
-    double cp = THERMAL_PROTECTION.specificHeatCapacity;
-    double alpha = k / (rho * cp);  // Thermal diffusivity
+// Solve 1D heat conduction through the thermal protection material only 
+vector<double> calculateTempDistribution(double protectionThickness_cm, double missionDuration, double dt, double dx, double initialExternalTemp) {
+    double alpha = THERMAL_PROTECTION.alpha;  // Thermal diffusivity
 
-    double thickness = protectionThickness/100; // Convert cm to meters
+    double thickness = protectionThickness_cm/100; // Convert cm to meters
     int Nx = (int)(thickness / dx) + 1;          // Number of spatial nodes
 
     vector<double> T(Nx, 300.0); // Initialize temperatures to 300K (room temperature)
@@ -143,6 +140,7 @@ vector<double> calculateTempDistribution(double protectionThickness, double miss
 
     return T;
 }
+
 
 // Calculate minimum required thickness of thermal protection at each z along the robot
 vector<double> calculateRequiredProtectionThickness(double missionDuration, double dz) {
@@ -198,97 +196,149 @@ vector<double> calculateRequiredProtectionThickness(double missionDuration, doub
 }
 
 // Solve 1D heat conduction through all layers of material
-vector<double> calculateMultiLayerTempDistribution(double missionDuration, double dt,
-    const vector<int>& nodesPerLayer,
-    const vector<double>& layerDx_m,
-    const vector<MaterialProperties>& layerMaterials) {
-    
-    // Step 1: Build the mesh
-    vector<double> x_positions;
-    vector<double> alpha;  // thermal diffusivity at each node
+vector<double> solveMultiLayer(
+    const vector<double>& layerThickness_cm,        // cm
+    const vector<MaterialProperties>& materials, // same length
+    double missionDuration,                      // s
+    double dt,                                   // s
+    double dx,                                   // m
+    double T_ext, 
+    bool normalized)                               // T/F 
+{
+    // Build global grid
+    double total=0;
+    for(double t:layerThickness_cm) total+=t/100.0;
+    int N=int(total/dx)+1;
 
-    for (size_t i = 0; i < nodesPerLayer.size(); ++i) {
-        for (int j = 0; j < nodesPerLayer[i]; ++j) {
-            double xpos = (j * layerDx_m[i]);
-            if (!x_positions.empty()) xpos += x_positions.back();
-            x_positions.push_back(xpos);
-
-            alpha.push_back(layerMaterials[i].alpha);
+    vector<double> T(N,300.0), kappa(N), rhoCp(N);
+    int idx=0;
+    for(size_t L=0; L<materials.size(); ++L){
+        double thick=layerThickness_cm[L]/100.0;
+        int n=int(thick/dx);
+        for(int j=0;j<n && idx<N;++j,++idx){
+            kappa[idx]=materials[L].thermalConductivity;
+            rhoCp[idx]=materials[L].density*materials[L].specificHeatCapacity;
         }
-        if (!x_positions.empty()) x_positions.pop_back(); // remove duplicate interface node
-        if (!alpha.empty()) alpha.pop_back();
+    }
+    while(idx<N){
+        auto &m=materials.back();
+        kappa[idx]=m.thermalConductivity;
+        rhoCp[idx]=m.density*m.specificHeatCapacity;
+        ++idx;
     }
 
-    int N = x_positions.size();
-    vector<double> T(N, 300.0); // Initial temperature
-    T[0] = 900.0;               // Boundary condition: fixed 900K at outer surface
-
-    // Step 2: Setup tridiagonal matrix
-    vector<double> a(N-1, 0.0); // sub-diagonal
-    vector<double> b(N, 0.0);   // main diagonal
-    vector<double> c(N-1, 0.0); // super-diagonal
-
-    double dx = (x_positions[1] - x_positions[0]); // Assume uniform dx inside each layer
-    double lambda = 0.0; 
-
-    for (int i = 0; i < N; ++i) {
-        lambda = alpha[i] * dt / (dx * dx); 
-
-        if (i > 0) a[i-1] = -lambda;        // sub-diagonal
-        b[i] = 1.0 + 2.0 * lambda;           // main diagonal
-        if (i < N-1) c[i] = -lambda;         // super-diagonal
+    // Assemble BTCS with half-cell resistances
+    vector<double> a(N-1), b(N), c(N-1);
+    for(int i=0;i<N;++i){
+        if(i==0){
+            b[i]=1; c[i]=0;
+        }
+        else if(i==N-1){
+            // insulated: only left half-cell
+            double RL = (dx*0.5)/kappa[i-1];
+            double coeff = dt/(rhoCp[i]*dx)*(1.0/RL);
+            a[i-1] = -coeff;
+            b[i]    =  1+coeff;
+        }
+        else {
+            // interface: left & right half-cells
+            double RL = (dx*0.5)/kappa[i-1];
+            double RR = (dx*0.5)/kappa[i];
+            double cL = dt/(rhoCp[i]*dx)*(1.0/RL);
+            double cR = dt/(rhoCp[i]*dx)*(1.0/RR);
+            a[i-1] = -cL;
+            b[i]    = 1 + cL + cR;
+            c[i]    = -cR;
+        }
     }
 
-    // Apply boundary conditions
-    b[0] = 1.0;
-    c[0] = 0.0;
-    a[N-2] = -lambda;
-    b[N-1] = 1.0 + lambda;
-
-    // Step 3: Time stepping loop
-    for (double time = 0; time < missionDuration; time += dt) {
-        vector<double> d = T;
-        d[0] = 900.0; 
-        T = thomas_algorithm(a, b, c, d);
+    // Time-march
+    T[0]=T_ext;
+    for(double t=0;t<missionDuration;t+=dt){
+        vector<double> d=T;
+        d[0]=T_ext;
+        T=thomas_algorithm(a,b,c,d);
     }
-
     return T;
 }
 
 
-//Generates dx values per layer based on number of nodes 
-vector<double> generateDxList(const vector<double>& layerThicknesses_cm, const vector<int>& nodes_per_layer) {
-    vector<double> dx_per_layer_m;
+// New function: Calculate required insulation thickness by solving full multilayer ODE stack
+vector<double> calculateRequiredInsulationThicknessMultiLayer(double missionDuration, double dz, bool normalized) 
+{
+    double totalHeight = 2.50;               // robot height in meters
+    int Nz = static_cast<int>(totalHeight / dz) + 1;
+    vector<double> insThick(Nz), zVals(Nz);
+    vector<MaterialProperties> mats = { THERMAL_PROTECTION, CARBON_FIBER, GLUE, STEEL };
+    vector<double> zValues((int)(totalHeight/dz)+1, 0.0);
 
-    for (size_t i = 0; i < layerThicknesses_cm.size(); ++i) {
-        double dx = layerThicknesses_cm[i] / 100.0 / (nodes_per_layer[i] - 1); // -1 because we include start and end node & div by 100 for cm to m  
-        dx_per_layer_m.push_back(dx);
+    for (int i = 0; i < Nz; ++i) {
+        double z = i * dz;
+        zVals[i] = z;
+        double dx = 0.0001;  // Spatial step size
+        double dt = 1;      // Time step size
+
+        // fixed layer thicknesses (cm)
+        double cf = carbonThickness(z);
+        double gl = glueThickness(z);
+        double st = steelThickness(z);
+
+        // binary search bounds (cm)
+        double lo = 0.1, hi = 50.0;
+        double tol = 0.01;
+        double mid = 0;
+
+        while (hi - lo > tol) {
+            mid = 0.5 * (lo + hi);
+            vector<double> layers = { mid, cf, gl, st };
+            double T_ext = initialTemp(z);
+
+            // solve full stack
+            auto Tdist = solveMultiLayer(
+                layers, mats,
+                missionDuration,
+                dt, dx,
+                T_ext,
+                true
+            );
+
+            // index at insulation/carbon interface
+            int idx_if = static_cast<int>((mid/100.0) / dx + 0.5);
+            double T_if = Tdist[idx_if];
+
+            // check against carbon fiber limit
+            if (T_if <= CARBON_FIBER.glassTransitionTemp-3) {
+                hi = mid;
+            } else {
+                lo = mid;
+            }
+        }
+
+        insThick[i] = 0.5 * (lo + hi);
+        if(normalized)
+        {
+            cout << "z=" << normalizePosition(z) << " units, ins_thick=" << insThick[i]
+                 << " cm -> T_if=";
+        }
+        else
+        {
+            cout << "z=" << z << " m, ins_thick=" << insThick[i]
+                 << " cm -> T_if=";
+        }
+        // final solve for reporting
+        auto Tfin = solveMultiLayer({insThick[i], cf, gl, st}, mats,
+                                     missionDuration, dt, dx, initialTemp(z), normalized);
+        int idx = static_cast<int>((insThick[i]/100.0) / dx + 0.5);
+        cout << Tfin[idx] << " K\n";
+        zValues[i] = z;
     }
 
-    return dx_per_layer_m;
-}
+    // outputting thickness values in a csv
+    string filename = "Thickness_" + to_string((int)(missionDuration/3600))+"_hr.csv";
+    writeVectorsToCSV(filename, zValues, insThick);
 
-//Resolves dx values per layer such that the nodes are equally spaced 
-pair<vector<double>, vector<int>> resolveDxList(const vector<double>& layerThicknesses_cm, const vector<double>& dx_guess_per_layer_cm) {
-    
-    vector<double> resolved_dx_per_layer_m;
-    vector<int> nodes_per_layer;
-
-    for (size_t i = 0; i < layerThicknesses_cm.size(); ++i) {
-        double thickness = layerThicknesses_cm[i] / 100.0; // cm → meters
-        double dx_guess = dx_guess_per_layer_cm[i] / 100.0; // cm → meters
-
-        // Calculate approximate number of intervals
-        int intervals = (int) round(thickness / dx_guess);
-        if (intervals < 1) intervals = 1; // Avoid zero division
-            
-        double dx_exact = thickness / intervals;
-
-        resolved_dx_per_layer_m.push_back(dx_exact);
-        nodes_per_layer.push_back(intervals + 1); // Nodes = intervals + 1
-    }
-
-    return {resolved_dx_per_layer_m, nodes_per_layer};
+    std::cout << "Output written in a csv!" << std::endl;
+    return insThick;
 }
 
 
@@ -326,9 +376,6 @@ void printTemperatureProfile(const vector<double>& temperatures,
     cout << "----- End of Material " << layer + 1 << " -----" << endl;
     }
 }
-
-
-
 
 // Main function
 int main() {
