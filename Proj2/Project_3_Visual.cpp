@@ -470,9 +470,11 @@ int main()
                 }
                 frameMeshOnLoad();
             }
+
         }
 
         ImGui::Separator();
+        if (ImGui::Button("Zoom to Fit")) { frameMeshOnLoad(); }
         ImGui::Text("View Mode (or press W)");
         if (ImGui::RadioButton("Face", currentViewMode == MODE_FACE)) { currentViewMode = MODE_FACE;      glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); }
         if (ImGui::RadioButton("Wireframe", currentViewMode == MODE_WIREFRAME)) { currentViewMode = MODE_WIREFRAME; glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); }
