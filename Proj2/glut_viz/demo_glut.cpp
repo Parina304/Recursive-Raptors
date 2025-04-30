@@ -91,7 +91,7 @@ int main(void){
     xt::xtensor<double, 1> tensor = {0.4};
 
     auto map = cppcolormap::colormap("Reds", 10);
-    auto c = cppcolormap::as_colors(tensor, cppcolormap::colormap("jet"), 0, 1);
+    auto c = cppcolormap::as_colors(tensor, cppcolormap::colormap("viridis"), 0, 1);
     // for (auto& f: map){
     //     std::cout << f << " ";
     //     // for (auto& d: f){
