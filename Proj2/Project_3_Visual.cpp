@@ -417,6 +417,7 @@ int main()
     //----------------------------------------------------------------- OBJ ----
     const std::string OBJ_3D = PrependBasePath("assets/obj/humanoid_robot.obj");
     const std::string OBJ_2D = PrependBasePath("assets/obj/humanoid_robot_2d.obj");
+    const std::string OBJ_TPS = PrependBasePath("assets/obj/humanoid_robot_3d_thickened_scaled_3_hr.obj");
 
     if (!loadMeshToGPU(OBJ_3D)) return 1;          // start with 3‑D model
 
