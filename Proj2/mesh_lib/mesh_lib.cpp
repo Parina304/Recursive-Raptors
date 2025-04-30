@@ -10,24 +10,96 @@ bool Mesh::loadOBJ(const std::string& filename) {
 
     std::string line;
     while (std::getline(file, line)) {
-        std::istringstream iss(line);
-        std::string type;
-        iss >> type;
+        line = trim(line);
+        if (line.empty() || line[0] == '#') continue;
+        if (line.rfind("v ", 0) == 0) {
+            try{
+                // Vertex line
+                std::istringstream iss(line.substr(2));
+                glm::vec3 v;
+                if (!(iss >> v.x >> v.y >> v.z)){
+                    throw std::runtime_error("Invalid vertex data");
+                }
+                tempVerts.push_back(v);
+                // update bounds
+                if (v.x < minX) minX = v.x;
+                if (v.x > maxX) maxX = v.x;
+                if (v.y < minY) minY = v.y;
+                if (v.y > maxY) maxY = v.y;
+                if (v.z < minZ) minZ = v.z;
+                if (v.z > maxZ) maxZ = v.z;
+            } catch (const std::exception& e) {
+                std::cerr << "WARNING: Skipping invalid vertex line: " << line << " (" << e.what() << ")" << std::endl;
+                continue;
+            } 
+        }
+        else if (line.rfind("usemtl ", 0) == 0) {
+            // Material usage for subsequent faces
+            currentMatName = trim(line.substr(7));
+            // Convert material name to enum
+            currentMat = materialTypeFromName(currentMatName);
+        }
+        else if (line.rfind("f ", 0) == 0) {
+            try{
+                // Face line (triangle assumed). OBJ faces are 1-indexed.
+                // We also handle faces with texture/normal: "f v/t/n v/t/n v/t/n"
+                std::istringstream iss(line.substr(2));
+                std::vector<std::string> vertex_tokens;
+                std:: string token;
+                while (iss >> token){
+                    vertex_tokens.push_back(token);
+                }
 
-        if (type == "v") {
-            Vertex v;
-            iss >> v.x >> v.y >> v.z;
-            vertices.push_back(v);
-        } else if (type == "f") {
-            Face f;
-            std::string vertexData;
-            while (iss >> vertexData) {
-                std::istringstream vStream(vertexData);
-                std::string vIdx;
-                std::getline(vStream, vIdx);  
-                f.vertexIndices.push_back(std::stoi(vIdx) - 1);
+                // Parse each vertex index group up to '/', ignoring texture/normal indices.
+                auto parseIndex = [](const std::string& token) {
+                    // token might be "int" or "int/int/int" etc.
+                    size_t slashPos = token.find('/');
+                    int idx = 0;
+                    try{
+                        if (slashPos == std::string::npos) {
+                            // no slash
+                            idx = std::stoi(token);
+                        }
+                        else {
+                            idx = std::stoi(token.substr(0, slashPos));
+                        }
+                    return idx;
+                    } catch (const std::invalid_argument& e){
+                        throw std::invalid_argument("Non-numverical vertex index");
+                    } catch (const std::out_of_range& e){
+                        throw std::out_of_range("Vertex index out of range.");
+                    }
+                };
+
+                // Parse vertex tokens to indices
+                std::vector<int> vertex_indices;
+                for (const auto& vertex_token: vertex_tokens){
+                    vertex_indices.push_back(parseIndex(vertex_token));
+                }
+                if (vertex_indices.size() < 3){
+                    throw std::runtime_error("Face with fewer than 3 vertices.");
+                }
+                for (size_t i = 1; i < vertex_indices.size() - 1; ++i){
+                    Face face;
+                    face.v[0] = vertex_indices[0] - 1;
+                    face.v[1] = vertex_indices[i] - 1;
+                    face.v[2] = vertex_indices[i + 1] - 1;
+                    face.mat = currentMat;
+
+                    // Assign an initial temperature based on material as a simple heuristic:
+                    float baseTemp = 300.0f; // base ambient temperature in K
+                    switch (face.mat) {
+                    case INSULATION: face.temp = baseTemp + 10.0f; break;
+                    case CFRP:       face.temp = baseTemp + 40.0f; break;  // outer layer hotter
+                    case GLUE:       face.temp = baseTemp + 30.0f; break;
+                    case STEEL:      face.temp = baseTemp + 20.0f; break;
+                    }
+                    faces.push_back(face);
+                }
+            } catch (const std::exception& e){
+                std::cerr << "WARNING: Skipping invalid face line: " << line << " (" << e.what() << ")" << std::endl;
+                continue;
             }
-            faces.push_back(f);
         }
     }
 
