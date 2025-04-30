@@ -210,6 +210,74 @@ void initOpenGL() {
 */
 
 
+// int main(int argc, char** argv) {
+//     int fake_argc = 1;
+//     char* fake_argv[] = { argv[0], nullptr };
+//     int fileCount = getNumberOfFiles();
+//     std::string file1 = getFileFromUser("Enter path to first OBJ file: ");
+//     loadOBJ(file1.c_str(), vertices1, faces1);
+//     computeZBounds(vertices1);
+//     if (fileCount == 2) {
+//         loadSecondFile = true;
+//         std::string file2 = getFileFromUser("Enter path to second OBJ file: ");
+//         loadOBJ(file2.c_str(), vertices2, faces2);
+//     }
+//     glutInit(&fake_argc, fake_argv);
+//     glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+//     glutInitWindowSize(800, 600);
+//     glutCreateWindow("OBJ Viewer");
+//     initOpenGL();
+//     glutDisplayFunc(display);
+//     glutKeyboardFunc(keyboard);
+//     glutMainLoop();
+//     return 0;
+// }
+// ...existing code...
+
+// Globals for mouse interaction
+bool isLeftMousePressed = false;
+bool isRightMousePressed = false;
+int lastMouseX = 0, lastMouseY = 0;
+
+void mouse(int button, int state, int x, int y) {
+    if (button == GLUT_LEFT_BUTTON) {
+        isLeftMousePressed = (state == GLUT_DOWN);
+    } else if (button == GLUT_RIGHT_BUTTON) {
+        isRightMousePressed = (state == GLUT_DOWN);
+    }
+    lastMouseX = x;
+    lastMouseY = y;
+}
+
+void motion(int x, int y) {
+    int dx = x - lastMouseX;
+    int dy = y - lastMouseY;
+
+    if (isLeftMousePressed) {
+        // Rotate the model
+        angleX += dy * 0.5f;
+        angleY += dx * 0.5f;
+    } else if (isRightMousePressed) {
+        // Pan the model
+        panX += dx * 0.01f;
+        panY -= dy * 0.01f;
+    }
+
+    lastMouseX = x;
+    lastMouseY = y;
+
+    glutPostRedisplay();
+}
+
+void mouseWheel(int button, int dir, int x, int y) {
+    if (dir > 0) {
+        zoom += 0.1f;  // Zoom in
+    } else {
+        zoom -= 0.1f;  // Zoom out
+    }
+    glutPostRedisplay();
+}
+
 int main(int argc, char** argv) {
     int fake_argc = 1;
     char* fake_argv[] = { argv[0], nullptr };
@@ -229,6 +297,9 @@ int main(int argc, char** argv) {
     initOpenGL();
     glutDisplayFunc(display);
     glutKeyboardFunc(keyboard);
+    glutMouseFunc(mouse);
+    glutMotionFunc(motion);
+    // glutMouseWheelFunc(mouseWheel);  // Requires freeglut
     glutMainLoop();
     return 0;
 }
