@@ -68,7 +68,7 @@ static float cutPlaneZ = 0.0f;   // in model space (metres)
 //--------------------------------------------------------------------------
 static std::vector<float> carbon, glue, steel;
 static float thickMin = 1e9f, thickMax = -1e9f;
-static std::vector<float> heights, thermal, steel_metric, glueR, carbonR, thermalR;
+static std::vector<float> heights, thermal, steel_metric, glue_metric, carbon_metric, tps_metric, glueR, carbonR, thermalR;
 static const float robotLength = 2.5f;                   // m
 static std::vector<float> thermZ, thermT;                // thermal profile
 
@@ -90,9 +90,9 @@ GLuint compileShader(GLenum, const char*);
 GLuint createProgram();
 
 // Really short Functions
-#define Min(arr) *std::min_element(arr.begin(), arr.end())
-#define Max(arr) *std::max_element(arr.begin(), arr.end())
-#define Normalize(elem, arr) std::clamp((elem - *std::min_element(arr.begin(), arr.end()) / (*std::max_element(arr.begin(), arr.end()) - *std::min_element(arr.begin(), arr.end()))), 0.f, 1.f)
+#define Min(arr) *std::min_element(arr.begin(), arr.end());
+#define Max(arr) *std::max_element(arr.begin(), arr.end());
+#define Normalize(elem, arr) std::clamp((elem - *std::min_element(arr.begin(), arr.end())) / (*std::max_element(arr.begin(), arr.end()) - *std::min_element(arr.begin(), arr.end())), 0.f, 1.f);
 
 //--------------------------------------------------------------------------
 // CSV HELPERS (single‑column and two‑column)
@@ -574,12 +574,12 @@ int main()
             for (int i = 0; i < V.size(); i++) {
                 const auto& v = V[i];
                 float normalized_y_at_v = (v.y - minY) / (maxY - minY);
-                float tps_at_v = interp1D(thermal, v.y);
-                std::cout << normalized_y_at_v << " " << tps_at_v << " " << 
-                *std::min_element(thermal.begin(), thermal.end()) << " " << 
-                *std::max_element(thermal.begin(), thermal.end()) << "\n";
+                float tps_at_v = interp1D(thermalR, normalized_y_at_v);
+                // std::cout << normalized_y_at_v << " " << tps_at_v << " " << 
+                // *std::min_element(thermal.begin(), thermal.end()) << " " << 
+                // *std::max_element(thermal.begin(), thermal.end()) << "\n";
 
-                float normalized_tps_at_v = Normalize(tps_at_v, thermal);
+                float normalized_tps_at_v = Normalize(tps_at_v, thermalR);
                 // float tv = interp1D(thermal, v.z);
                 // float tn = std::clamp((v.y - minY) / (maxY - minY), 0.0f, 1.0f);
                 glm::vec3 col = (normalized_tps_at_v < 0.5f)
