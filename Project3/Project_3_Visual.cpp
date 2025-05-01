@@ -535,6 +535,42 @@ if (ImGui::RadioButton("Material", currentViewMode == MODE_MATERIAL)) {
         ImGui::SliderFloat("Cut Z", &cutPlaneZ, -1.0f, 1.0f, "%.2f m");
         ImGui::End();
 
+        if (currentViewMode == MODE_MATERIAL) {
+            ImGui::SetNextWindowPos(ImVec2(50, 50), ImGuiCond_Once); // Set position
+            ImGui::Begin("Colorbar");
+        
+            // Debug: Check if the window is created
+            std::cout << "Colorbar window created" << std::endl;
+        
+            // Define the size and position of the colorbar
+            ImVec2 barSize = ImVec2(20, 200); // Width: 20px, Height: 200px
+            ImVec2 barPos = ImGui::GetCursorScreenPos(); // Position at the current cursor
+        
+            // Draw the gradient colorbar
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+            for (int i = 0; i < 100; ++i) {
+                float t = i / 99.0f; // Normalized value [0, 1]
+                ImU32 color = (t < 0.5f)
+                    ? IM_COL32(0, (int)(t * 2.0f * 255), 255, 255) // Blue → Green
+                    : IM_COL32((int)((t - 0.5f) * 2.0f * 255), 255, 0, 255); // Green → Red
+        
+                float yStart = barPos.y + i * (barSize.y / 100.0f);
+                float yEnd = barPos.y + (i + 1) * (barSize.y / 100.0f);
+                drawList->AddRectFilled(ImVec2(barPos.x, yStart), ImVec2(barPos.x + barSize.x, yEnd), color);
+        
+                // Debug: Check if the gradient is being drawn
+                std::cout << "Drawing gradient segment " << i << std::endl;
+            }
+        
+            // Add labels for min and max values
+            ImGui::SetCursorScreenPos(ImVec2(barPos.x + barSize.x + 5, barPos.y));
+            ImGui::Text("Min: %.2f", thickMin);
+            ImGui::SetCursorScreenPos(ImVec2(barPos.x + barSize.x + 5, barPos.y + barSize.y - ImGui::GetTextLineHeight()));
+            ImGui::Text("Max: %.2f", thickMax);
+        
+            ImGui::End();
+        }
+
         // ---------------------------------------------------------------------
         // Thickness stacked‑area plot if Material mode is active
         if (currentViewMode == MODE_MATERIAL) {
