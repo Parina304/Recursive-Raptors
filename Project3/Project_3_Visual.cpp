@@ -15,8 +15,10 @@
 
 #ifdef _WIN32
 #define BASE_PATH "./"
+#define FONT_SIZE 1.0f
 #else
 #define BASE_PATH "../"
+#define FONT_SIZE 1.5f
 #endif
 
 #include "mesh_lib.h"          // simple OBJ + Face data structure (user‑supplied)
@@ -461,7 +463,11 @@ int main()
     glfwGetCursorPos(win, &lastX, &lastY);
 
     // ── ImGui + ImPlot ─────────────────────────────────────────────────────────
-    IMGUI_CHECKVERSION(); ImGui::CreateContext(); ImPlot::CreateContext();
+    IMGUI_CHECKVERSION(); 
+    ImGui::CreateContext(); 
+    ImGuiIO& io = ImGui::GetIO();
+    io.FontGlobalScale = FONT_SIZE;
+    ImPlot::CreateContext();
     ImGui::StyleColorsDark();
     ImGui_ImplGlfw_InitForOpenGL(win, true);
     ImGui_ImplOpenGL3_Init("#version 330 core");
