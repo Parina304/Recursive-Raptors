@@ -112,22 +112,62 @@ std::string PrependBasePath(const std::string& path) {
 }
 
 // Load two-column CSV (position,value).
+// std::vector<float> loadProfile1(const std::string& fname) {
+//     std::vector<float> vals;
+//     std::ifstream in(fname);
+//     if (!in) {
+//         std::cerr << "[CSV] Cannot open " << fname << "\n";
+//         return vals;
+//     }
+//     std::string line; std::getline(in, line);              // skip header
+//     while (std::getline(in, line)) {
+//         std::istringstream ss(line);
+//         float s, v; char comma;
+//         ss >> s >> comma >> v;             // s is the 0…1 normalised height
+//         vals.push_back(v);
+//         thickMin = std::min(thickMin, v);
+//         thickMax = std::max(thickMax, v);
+//     }
+//     return vals;
+// }
 std::vector<float> loadProfile1(const std::string& fname) {
     std::vector<float> vals;
     std::ifstream in(fname);
     if (!in) {
-        std::cerr << "[CSV] Cannot open " << fname << "\n";
+        std::cerr << "[CSV] ERROR: Cannot open file " << fname << "\n";
         return vals;
     }
-    std::string line; std::getline(in, line);              // skip header
-    while (std::getline(in, line)) {
-        std::istringstream ss(line);
-        float s, v; char comma;
-        ss >> s >> comma >> v;             // s is the 0…1 normalised height
-        vals.push_back(v);
-        thickMin = std::min(thickMin, v);
-        thickMax = std::max(thickMax, v);
+
+    std::string line;
+    if (!std::getline(in, line)) {
+        std::cerr << "[CSV] ERROR: File " << fname << " is empty or invalid.\n";
+        return vals;
     }
+
+    while (std::getline(in, line)) {
+        try {
+            std::istringstream ss(line);
+            float s, v;
+            char comma;
+
+            // Ensure the line has the correct format (e.g., "s,v").
+            if (!(ss >> s >> comma >> v) || comma != ',') {
+                throw std::runtime_error("Invalid CSV format (expected 's,v').");
+            }
+
+            vals.push_back(v);
+            thickMin = std::min(thickMin, v);
+            thickMax = std::max(thickMax, v);
+        } catch (const std::exception& e) {
+            std::cerr << "[CSV] WARNING: Skipping invalid line: " << line << " (" << e.what() << ")\n";
+            continue;
+        }
+    }
+
+    if (vals.empty()) {
+        std::cerr << "[CSV] ERROR: No valid data found in file " << fname << "\n";
+    }
+
     return vals;
 }
 
