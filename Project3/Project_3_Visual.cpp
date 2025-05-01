@@ -171,17 +171,54 @@ std::vector<float> loadProfile1(const std::string& fname) {
     return vals;
 }
 
-static void loadThermal(const std::string& fname)
-{
+// static void loadThermal(const std::string& fname)
+// {
+//     std::ifstream in(fname);
+//     if (!in) { std::cerr << "[CSV] Cannot open " << fname << "\n"; return; }
+//     std::string line; std::getline(in, line);
+//     while (std::getline(in, line)) {
+//         std::istringstream ss(line);
+//         float z, t; char comma;
+//         ss >> z >> comma >> t;
+//         thermZ.push_back(z);
+//         thermT.push_back(t);
+//     }
+// }
+
+static void loadThermal(const std::string& fname) {
     std::ifstream in(fname);
-    if (!in) { std::cerr << "[CSV] Cannot open " << fname << "\n"; return; }
-    std::string line; std::getline(in, line);
+    if (!in) {
+        std::cerr << "[CSV] ERROR: Cannot open file " << fname << "\n";
+        return;
+    }
+
+    std::string line;
+    if (!std::getline(in, line)) {
+        std::cerr << "[CSV] ERROR: File " << fname << " is empty or invalid.\n";
+        return;
+    }
+
     while (std::getline(in, line)) {
-        std::istringstream ss(line);
-        float z, t; char comma;
-        ss >> z >> comma >> t;
-        thermZ.push_back(z);
-        thermT.push_back(t);
+        try {
+            std::istringstream ss(line);
+            float z, t;
+            char comma;
+
+            // Ensure the line has the correct format (e.g., "z,t").
+            if (!(ss >> z >> comma >> t) || comma != ',') {
+                throw std::runtime_error("Invalid CSV format (expected 'z,t').");
+            }
+
+            thermZ.push_back(z);
+            thermT.push_back(t);
+        } catch (const std::exception& e) {
+            std::cerr << "[CSV] WARNING: Skipping invalid line: " << line << " (" << e.what() << ")\n";
+            continue;
+        }
+    }
+
+    if (thermZ.empty() || thermT.empty()) {
+        std::cerr << "[CSV] ERROR: No valid data found in file " << fname << "\n";
     }
 }
 
@@ -521,6 +558,17 @@ int main()
     steel = loadProfile1(PrependBasePath("assets/csv/steel_thickness.csv"));
     loadThermal(PrependBasePath("assets/csv/Thickness_1_hr.csv"));
 
+    // Check material vectors
+    if (carbon.empty() || glue.empty() || steel.empty()) {
+        std::cerr << "[CSV] ERROR: One or more thickness CSV files are empty.\n";
+        return 1; // Exit or handle the error
+    }
+    if (carbon.size() != glue.size() || glue.size() != steel.size()) {
+        std::cerr << "[CSV] ERROR: Thickness CSV files have inconsistent sizes.\n";
+        return 1; // Exit or handle the error
+    }
+
+    
     // Load CSV profiles from assets/csv.
     int N = (int)carbon.size();
     heights.resize(N);
