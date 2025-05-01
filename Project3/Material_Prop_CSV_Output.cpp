@@ -7,7 +7,6 @@ using namespace std;
 
 // Constants
 const double TOTAL_HEIGHT = 2.5; // meters
-const double FIXED_THERMAL_PROTECTION_THICKNESS_CM = 15.0; // uniform 15 cm
 
 // Normalize position from [0,2.5] meters to [0,1]
 double normalizePosition(double z) {
@@ -58,7 +57,7 @@ void writeThicknessProfileToCSV(const string& filename, double dz) {
         return;
     }
 
-    file << "z (m),Initial Temp (K),Thermal Protection Thickness (cm),Glue Thickness (cm),Carbon Fiber Thickness (cm),Glue Thickness (cm),Steel Thickness (cm)\n";
+    file << "z (m),Initial Temp (K),Carbon Fiber Thickness (cm),Glue Thickness (cm),Steel Thickness (cm)\n";
 
     int numSteps = static_cast<int>(TOTAL_HEIGHT / dz) + 1;
 
@@ -67,19 +66,15 @@ void writeThicknessProfileToCSV(const string& filename, double dz) {
         if (z > TOTAL_HEIGHT) z = TOTAL_HEIGHT; // ensure it doesn't slightly overshoot
 
         double temp = initialTemp(z);
-        double thermalProtection = FIXED_THERMAL_PROTECTION_THICKNESS_CM;
-        double glue1 = glueThickness(z);
         double carbon = carbonThickness(z);
-        double glue2 = glueThickness(z); // second glue layer
+        double glue = glueThickness(z); 
         double steel = steelThickness(z);
 
         file << fixed << setprecision(6)
              << z << ","
              << setprecision(3) << temp << ","
-             << thermalProtection << ","
-             << glue1 << ","
              << carbon << ","
-             << glue2 << ","
+             << glue << ","
              << steel << "\n";
     }
 
@@ -89,7 +84,7 @@ void writeThicknessProfileToCSV(const string& filename, double dz) {
 
 int main() {
     double dz;
-    cout << "Enter dz value (meters) for dividing 2.5m height (recommended: 0.01 to 0.05 m): ";
+    cout << "Enter dz value (meters) for dividing 2.5m height (recommended: 0.1 for 10 cm): ";
     cin >> dz;
 
     if (dz <= 0.0 || dz > TOTAL_HEIGHT) {
