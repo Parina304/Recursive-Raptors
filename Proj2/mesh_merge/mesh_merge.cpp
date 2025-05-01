@@ -52,7 +52,7 @@ Mesh convertToNormalMesh(const CGALMesh& cgalMesh) {
     normalMesh.vertices = std::move(vertices);
     normalMesh.faces = std::move(faces);
 
-    normalMesh.CalcStats();
+    normalMesh.calc_centroid();
 
     return normalMesh;
 }

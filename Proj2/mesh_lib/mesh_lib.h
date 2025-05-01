@@ -1,61 +1,58 @@
-﻿#ifndef MESH_LIB_H
-#define MESH_LIB_H
+#ifndef _MESH_LIB_H
+#define _MESH_LIB_H
 
+#include <iostream>
+#include <fstream>
 #include <vector>
+#include <tuple>
+#include <sstream>
+#include <cstdint>
 #include <string>
-#include <glm/glm.hpp>
+#include <cmath>
+#include <regex>
 
-// Define material types for faces
-enum MaterialType {
-    INSULATION,
-    GLUE,
-    STEEL,
-    CFRP
+// Structure to store a vertex with 3D coordinates
+struct Vertex {
+    float x, y, z;
 };
 
-// Face structure: holds indices of the vertices and associated material & temperature
+// Structure to store a face with vertex indices
 struct Face {
-    int v[3];            // indices into the vertex list (for the original mesh vertices)
-    MaterialType mat;    // material type of this face
-    float temp;          // representative temperature of this face (for coloring)
+    std::vector<uint32_t> vertexIndices;
+    std::vector<std::tuple<double, double>> materialData; // Example: (materialProp, thickness)
 };
 
+// Mesh class to handle loading, conversion, and writing
 class Mesh {
 public:
-    std::vector<glm::vec3> vertices;      // unique vertices from OBJ
-    std::vector<Face> faces;             // faces with indices into vertices
-    std::vector<glm::vec3> flatVertices; // flattened vertex array (each face's vertices duplicated) for GL drawing
-    std::vector<glm::vec3> flatColors;   // parallel array of colors for each vertex in flatVertices
+    std::vector<Vertex> vertices;
+    std::vector<Face> faces;
+    Vertex centroid;
 
-    // Bounding values (for camera and cut plane)
-    float minX, maxX;
-    float minY, maxY;
-    float minZ, maxZ;
-    // Temperature range (for legend in temperature mode)
-    float minTemp, maxTemp;
+public:
+    // mesh i/o functions
+    bool loadOBJ(const std::string& filename);
+    bool saveOBJ(const std::string& filename) const;
+    bool savePLY(const std::string& filename) const;
+    bool loadPLY(const std::string& filename);
+    void printMeshStats() const;
+    void calc_centroid();
 
-    Mesh() : minX(0), maxX(0), minY(0), maxY(0), minZ(0), maxZ(0), minTemp(0), maxTemp(0) {}
+    // mesh operations
+    void translate(float x, float y, float z);
+    void rotate(float rad, int axis);
+    void scale(float scale_fac);
+    void to_origin();
 
-    // Load mesh from an OBJ file. Returns true on success.
-    bool loadOBJ(const std::string& filePath);
-
-    // After loading, prepare flattened buffers for rendering (populate flatVertices and flatColors)
-    void createFlatArrays();
-
-    // Utility: convert material name (from OBJ/MTL) to our MaterialType enum
-    MaterialType materialTypeFromName(const std::string& name) const;
-
-    // Get a color for a given material type (for Material view mode)
-    glm::vec3 getMaterialColor(MaterialType mat) const;
-
-    // Compute an RGB color (0-1 each) for a given temperature value using jet colormap (Temperature mode)
-    glm::vec3 getColorForTemperature(float value) const;
-
-    // Increase thermal protection layer thickness (simulate adding insulation)
-    void increaseProtectionThickness();
-
-    // “Solve” the thermal simulation: update face temperatures (this is a stub for actual simulation)
-    void solveThermal();
 };
 
-#endif // MESH_LIB_H
+class VolMesh : public Mesh {
+    
+public:
+    bool parsePoints(const std::string& filename);
+    bool parseCells(const std::string& filename);
+    bool parseVTK(const std::string& filename);
+    bool writeVTK(const std::string& filename) const;
+};
+
+#endif

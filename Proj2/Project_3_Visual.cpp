@@ -68,7 +68,7 @@ static float cutPlaneZ = 0.0f;   // in model space (metres)
 //--------------------------------------------------------------------------
 static std::vector<float> carbon, glue, steel;
 static float thickMin = 1e9f, thickMax = -1e9f;
-static std::vector<float> heights, thermal, steelR, glueR, carbonR, thermalR;
+static std::vector<float> heights, thermal, steel_metric, glue_metric, carbon_metric, tps_metric, glueR, carbonR, thermalR;
 static const float robotLength = 2.5f;                   // m
 static std::vector<float> thermZ, thermT;                // thermal profile
 
@@ -89,12 +89,17 @@ bool  loadMeshToGPU(const std::string& path); // used every time mesh changes
 GLuint compileShader(GLenum, const char*);
 GLuint createProgram();
 
+// Really short Functions
+#define Min(arr) *std::min_element(arr.begin(), arr.end());
+#define Max(arr) *std::max_element(arr.begin(), arr.end());
+#define Normalize(elem, arr) std::clamp((elem - *std::min_element(arr.begin(), arr.end())) / (*std::max_element(arr.begin(), arr.end()) - *std::min_element(arr.begin(), arr.end())), 0.f, 1.f);
+
 //--------------------------------------------------------------------------
 // CSV HELPERS (single‑column and two‑column)
 //--------------------------------------------------------------------------
 
 // makes excutable compatible in ./ or ./build  
-std::string PrependBasePath(const std::string& path) {
+std::string PrependBasePath (const std::string& path){
     return BASE_PATH + path;
 }
 
@@ -133,8 +138,10 @@ static void loadThermal(const std::string& fname)
 }
 
 // Linear look‑ups for material and thermal profiles
+// s shold be float between 0.0 and 1.0, and will be clamped to that interval if it exceeds
 static float interp1D(const std::vector<float>& arr, float s)
 {
+    s = std::clamp(s, 0.f, 1.f);
     if (arr.empty()) return 0.0f;
     float idx = s * (arr.size() - 1);
     int   i0 = (int)std::floor(idx);
@@ -229,6 +236,25 @@ bool loadMeshToGPU(const std::string& path)
     return true;
 }
 
+void frameMeshOnLoad()
+{
+    // compute axis-aligned bounding box of the newly loaded mesh
+    glm::vec3 mn(1e9f), mx(-1e9f);
+    for (auto& v : mesh.vertices) {
+        mn = glm::min(mn, v);
+        mx = glm::max(mx, v);
+    }
+    // center in X,Y (we treat Z as depth for 3D)
+    glm::vec3 center = (mn + mx) * 0.5f;
+    panX = center.x;
+    panY = center.y;
+    // radius = half the diagonal
+    float radius = glm::length(mx - mn) * 0.5f;
+    if (radius < 1e-3f) radius = 1.0f;
+    camDistance = radius * 3.0f;    // 3× so you see it comfortably
+    camYaw = 0.0f;
+    camPitch = 0.0f;
+}
 
 //--------------------------------------------------------------------------
 // SHADERS (single clip plane)
@@ -295,13 +321,14 @@ GLuint createProgram()
 static void key_cb(GLFWwindow* window, int key, int, int action, int)
 {
     if (action == GLFW_PRESS) {
-        if (key == GLFW_KEY_W) {
+        if(key == GLFW_KEY_W){
             currentViewMode = ViewMode((currentViewMode + 1) % 3);
             GLenum mode = (currentViewMode == MODE_WIREFRAME ? GL_LINE : GL_FILL);
             glPolygonMode(GL_FRONT_AND_BACK, mode);
-        }
-        else if (key == GLFW_KEY_ESCAPE || key == GLFW_KEY_Q) {
+        } else if (key == GLFW_KEY_ESCAPE || key == GLFW_KEY_Q){
             glfwSetWindowShouldClose(window, GLFW_TRUE); // Signal to close the window
+        } else if (key == GLFW_KEY_F){
+            frameMeshOnLoad();
         }
     }
 }
@@ -334,25 +361,7 @@ static void scroll_cb(GLFWwindow*, double, double yoff)
     camDistance *= (1.0f - float(yoff) * 0.1f);
     camDistance = std::max(camDistance, 0.1f);
 }
-void frameMeshOnLoad()
-{
-    // compute axis-aligned bounding box of the newly loaded mesh
-    glm::vec3 mn(1e9f), mx(-1e9f);
-    for (auto& v : mesh.vertices) {
-        mn = glm::min(mn, v);
-        mx = glm::max(mx, v);
-    }
-    // center in X,Y (we treat Z as depth for 3D)
-    glm::vec3 center = (mn + mx) * 0.5f;
-    panX = center.x;
-    panY = center.y;
-    // radius = half the diagonal
-    float radius = glm::length(mx - mn) * 0.5f;
-    if (radius < 1e-3f) radius = 1.0f;
-    camDistance = radius * 3.0f;    // 3× so you see it comfortably
-    camYaw = 0.0f;
-    camPitch = 0.0f;
-}
+
 
 //--------------------------------------------------------------------------
 // MAIN
@@ -396,14 +405,14 @@ int main()
     int N = (int)carbon.size();
     heights.resize(N);
     thermal.resize(N);
-    steelR.resize(N); glueR.resize(N); carbonR.resize(N); thermalR.resize(N);
+    steel_metric.resize(N); glueR.resize(N); carbonR.resize(N); thermalR.resize(N);
 
     for (int i = 0; i < N; ++i) {
         float s = i / float(N - 1);
         heights[i] = s * robotLength;
         thermal[i] = interpThermal(heights[i]);
-        steelR[i] = steel[i] / 100.0f;
-        glueR[i] = steelR[i] + glue[i] / 100.0f;
+        steel_metric[i] = steel[i] / 100.0f;
+        glueR[i] = steel_metric[i] + glue[i] / 100.0f;
         carbonR[i] = glueR[i] + carbon[i] / 100.0f;
         thermalR[i] = carbonR[i] + thermal[i] / 100.0f;
     }
@@ -412,6 +421,7 @@ int main()
     const std::string OBJ_3D = PrependBasePath("assets/obj/humanoid_robot.obj");
     const std::string OBJ_2D = PrependBasePath("assets/obj/humanoid_robot_2d.obj");
     const std::string OBJ_TPS = PrependBasePath("assets/obj/humanoid_robot_3d_thickened_scaled_3_hr.obj");
+
     if (!loadMeshToGPU(OBJ_3D)) return 1;          // start with 3‑D model
 
     //----------------------------------------------------------------- GLSL ----
@@ -444,7 +454,7 @@ int main()
             if (currentMeshType != MESH_3D) {
                 loadMeshToGPU(OBJ_3D);
                 currentMeshType = MESH_3D;
-                frameMeshOnLoad();
+                //frameMeshOnLoad();
             }
         }
         ImGui::SameLine();
@@ -452,7 +462,7 @@ int main()
             if (currentMeshType != MESH_2D) {
                 loadMeshToGPU(OBJ_2D);
                 currentMeshType = MESH_2D;
-                frameMeshOnLoad();
+                //frameMeshOnLoad();
             }
         }
         ImGui::SameLine();
@@ -468,7 +478,7 @@ int main()
                 else {
                     std::cerr << "[Mesh] Failed to load TPS mesh\n";
                 }
-                frameMeshOnLoad();
+                //frameMeshOnLoad();
             }
 
         }
@@ -488,27 +498,39 @@ int main()
         // Thickness stacked‑area plot if Material mode is active
         if (currentViewMode == MODE_MATERIAL) {
             ImGui::Begin("Thickness Profile");
-            if (ImPlot::BeginPlot("##profile", ImVec2(-1, 300))) {
+            if (ImPlot::BeginPlot("##profile_stacked", ImVec2(-1, 300))) {
                 ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0f, *std::max_element(thermalR.begin(), thermalR.end()), ImPlotCond_Always);
                 ImPlot::SetupAxisLimits(ImAxis_X1, robotLength, 0.0f, ImPlotCond_Always);
-                ImPlot::SetupAxis(ImAxis_Y1, "Radius (m)");
+                ImPlot::SetupAxis(ImAxis_Y1, "Thickness (m)");
                 // ImPlot::SetupAxis(ImAxis_X1, "Height (m)", ImPlotAxisFlags_NoDecorations);
                 ImPlot::SetupAxis(ImAxis_X1, "Height (m)");
 
-                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(200, 50, 200, 100));   ImPlot::PlotShaded("TPS", heights.data(), thermalR.data(), N);   ImPlot::PopStyleColor();
-                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(50, 200, 50, 100));   ImPlot::PlotShaded("Carbon", heights.data(), carbonR.data(), N);   ImPlot::PopStyleColor();
-                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(200, 130, 50, 100));   ImPlot::PlotShaded("Glue", heights.data(), glueR.data(), N);   ImPlot::PopStyleColor();
-                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(50, 100, 200, 100));   ImPlot::PlotShaded("Steel", heights.data(), steelR.data(), N);   ImPlot::PopStyleColor();
+                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(200,50, 200,255));   
+                ImPlot::PlotShaded("TPS", heights.data(), thermalR.data(), N);   
+                ImPlot::PopStyleColor();
+
+                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(50, 200,50, 255));
+                ImPlot::PlotShaded("Carbon", heights.data(), carbonR.data(), N);
+                ImPlot::PopStyleColor();
+
+                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(200,130,50, 255));   
+                ImPlot::PlotShaded("Glue", heights.data(), glueR.data(), N);   
+                ImPlot::PopStyleColor();
+                
+                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(50, 100,200,255));   
+                ImPlot::PlotShaded("Steel", heights.data(), steel_metric.data(), N);   
+                ImPlot::PopStyleColor();
+
                 ImPlot::EndPlot();
             }
             ImGui::End();
-
+            
             ImGui::Begin("Thickness Profile");
-            if (ImPlot::BeginPlot("##profile", ImVec2(-1, 300))) {
+            if (ImPlot::BeginPlot("##profile_separate", ImVec2(-1, 300))) {
                 // Set up axes
                 ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0f, *std::max_element(thermal.begin(), thermal.end()), ImPlotCond_Always);
                 ImPlot::SetupAxisLimits(ImAxis_X1, robotLength, 0.0f, ImPlotCond_Always);
-                ImPlot::SetupAxis(ImAxis_Y1, "Radius (m)");
+                ImPlot::SetupAxis(ImAxis_Y1, "Thickness (m)");
                 ImPlot::SetupAxis(ImAxis_X1, "Height (m)");
 
                 // Plot steel as a line
@@ -586,59 +608,56 @@ int main()
 // MATERIAL COLOURS (replace your entire original block)
 // ——————————————————————————————————————————————
         if (currentViewMode == MODE_MATERIAL) {
-            // 1) start with a grey default for every vertex
-            std::vector<glm::vec3> matCols(V.size(), glm::vec3(0.8f));
-
-            // 2) compute min/max X once (for your s‐parameter)
-            float minX = std::numeric_limits<float>::infinity();
-            float maxX = -std::numeric_limits<float>::infinity();
-            for (auto const& v : V) {
-                minX = std::min(minX, v.x);
+            std::vector<glm::vec3> vertex_colors(V.size());
+            float minX = 1e9f, maxX = -1e9f;
+            float minY = 1e9f, maxY = -1e9f;
+            float minZ = 1e9f, maxZ = -1e9f;
+            for (const auto& v : V) {
+                minX = std::min(minX, v.x); 
                 maxX = std::max(maxX, v.x);
-            }
-            float deltaX = maxX - minX;
-
-            // 3) for each face, guard against bad indices *before* you read V[f.v[*]]
-            for (auto const& f : F) {
-                if (f.v[0] >= V.size() || f.v[1] >= V.size() || f.v[2] >= V.size()) {
-                    std::cerr << "[Mesh] Skipping face with bad indices: ("
-                        << f.v[0] << "," << f.v[1] << "," << f.v[2] << ")\n";
-                    continue;
-                }
-
-                // 4) compute normalized position s = avgX → [0,1]
-                float avgX = (V[f.v[0]].x + V[f.v[1]].x + V[f.v[2]].x) / 3.0f;
-                float s = (deltaX > 0 ? (avgX - minX) / deltaX : 0.0f);
-
-                // 5) pick the right thickness profile
-                float tv = 0.0f;
-                switch (f.mat) {
-                case 0: tv = interp1D(steel, s); break;
-                case 1: tv = interp1D(glue, s); break;
-                case 2: tv = interp1D(carbon, s); break;
-                default: break;
-                }
-
-                // 6) map thickness → [0,1], then blue→green→red
-                float tn = std::clamp((tv - thickMin) / (thickMax - thickMin), 0.0f, 1.0f);
-                glm::vec3 col = (tn < 0.5f)
-                    ? glm::mix(glm::vec3(0, 0, 1), glm::vec3(0, 1, 0), tn * 2.0f)
-                    : glm::mix(glm::vec3(0, 1, 0), glm::vec3(1, 0, 0), (tn - 0.5f) * 2.0f);
-
-                // 7) write the colour back into each of the face’s vertices
-                matCols[f.v[0]] = col;
-                matCols[f.v[1]] = col;
-                matCols[f.v[2]] = col;
+                minY = std::min(minY, v.y); 
+                maxY = std::max(maxY, v.y); 
+                minZ = std::min(minZ, v.z); 
+                maxZ = std::max(maxX, v.z); 
             }
 
-            // 8) finally push the full array up to the GPU
+            // for (const auto& f : F) {
+            //     float s = ((V[f.v[0]].x + V[f.v[1]].x + V[f.v[2]].x) / 3.0f - minX) / (maxX - minX);
+            //     float tv = 0.0f;
+            //     switch (f.mat) {
+            //     case 0: tv = interp1D(thermal, s); break;
+            //     case 1: tv = interp1D(glue, s); break;
+            //     case 2: tv = interp1D(carbon, s); break;
+            //     default: break;
+            //     }
+            //     float tn = std::clamp((tv - thickMin) / (thickMax - thickMin), 0.0f, 1.0f);
+            //     glm::vec3 col = (tn < 0.5f)
+            //         ? glm::mix(glm::vec3(0, 0, 1), glm::vec3(0, 1, 0), tn * 2.0f)
+            //         : glm::mix(glm::vec3(0, 1, 0), glm::vec3(1, 0, 0), (tn - 0.5f) * 2.0f);
+
+            //     vertex_colors[f.v[0]] = vertex_colors[f.v[1]] = vertex_colors[f.v[2]] = col;
+            // }
+            
+            for (int i = 0; i < V.size(); i++) {
+                const auto& v = V[i];
+                float normalized_y_at_v = (v.y - minY) / (maxY - minY);
+                float tps_at_v = interp1D(thermalR, normalized_y_at_v);
+                // std::cout << normalized_y_at_v << " " << tps_at_v << " " << 
+                // *std::min_element(thermal.begin(), thermal.end()) << " " << 
+                // *std::max_element(thermal.begin(), thermal.end()) << "\n";
+
+                float normalized_tps_at_v = Normalize(tps_at_v, thermalR);
+                // float tv = interp1D(thermal, v.z);
+                // float tn = std::clamp((v.y - minY) / (maxY - minY), 0.0f, 1.0f);
+                glm::vec3 col = (normalized_tps_at_v < 0.5f)
+                    ? glm::mix(glm::vec3(0, 0, 1), glm::vec3(0, 1, 0), normalized_tps_at_v * 2.0f)
+                    : glm::mix(glm::vec3(0, 1, 0), glm::vec3(1, 0, 0), (normalized_tps_at_v - 0.5f) * 2.0f);
+
+                vertex_colors[i] = col;
+            }
+
             glBindBuffer(GL_ARRAY_BUFFER, CBO);
-            glBufferSubData(
-                GL_ARRAY_BUFFER,
-                0,
-                (GLsizeiptr)(matCols.size() * sizeof(glm::vec3)),
-                matCols.data()
-            );
+            glBufferSubData(GL_ARRAY_BUFFER, 0, vertex_colors.size() * sizeof(glm::vec3), vertex_colors.data());
         }
         else {
             // your grey‐only fallback (unchanged)
@@ -653,13 +672,14 @@ int main()
         }
 
 
-        // ── Drawing ───────────────────────────────────────────────────────────
+        // ── Drawing Mesh ───────────────────────────────────────────────────────────
         glViewport(0, 0, fbW, fbH);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glUseProgram(prog);
         glUniformMatrix4fv(locMVP, 1, GL_FALSE, glm::value_ptr(MVP));
         glUniform4f(locClip, 0.0f, 0.0f, 1.0f, -cutPlaneZ);
+        
 
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, (GLsizei)I.size(), GL_UNSIGNED_INT, 0);

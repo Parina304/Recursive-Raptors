@@ -5,7 +5,6 @@
 #endif
 
 #include "mesh_lib.h"
-#include "mesh_merge.h"
 
 #include <iostream>
 #include <string>
@@ -30,50 +29,6 @@ bool flag_color_calced = false;
 
 Mesh humanoid;
 
-void computeZBounds(const std::vector<float>& vertices) {
-    if (vertices.empty()) return;
-    minZ = maxZ = vertices[2];
-    for (size_t i = 2; i < vertices.size(); i += 3) {
-        if (vertices[i] < minZ) minZ = vertices[i];
-        if (vertices[i] > maxZ) maxZ = vertices[i];
-    }
-    cutPlaneZ = (minZ + maxZ) / 2.0f;
-}
-
-void drawCuttingPlane() {
-    float planeSize = 2.0f;
-    glDisable(GL_LIGHTING);
-    glColor4f(0.0f, 0.0f, 1.0f, 0.3f);
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-    glBegin(GL_QUADS);
-    glVertex3f(-planeSize, -planeSize, cutPlaneZ);
-    glVertex3f(planeSize, -planeSize, cutPlaneZ);
-    glVertex3f(planeSize, planeSize, cutPlaneZ);
-    glVertex3f(-planeSize, planeSize, cutPlaneZ);
-    glEnd();
-    glDisable(GL_BLEND);
-    glEnable(GL_LIGHTING);
-}
-
-void drawMesh(const std::vector<float>& vertices, const std::vector<int>& faces, float color[3], float translateX = 0.0f) {
-    glColor3f(0.0f, 1.0f, 1.0f);
-    glPushMatrix();
-    glTranslatef(translateX, 0.0f, 0.0f);
-    glBegin(GL_TRIANGLES);
-    for (size_t i = 0; i < faces.size(); i += 3) {
-        int idx1 = faces[i] * 3;
-        int idx2 = faces[i + 1] * 3;
-        int idx3 = faces[i + 2] * 3;
-        if (vertices[idx1 + 2] < cutPlaneZ && vertices[idx2 + 2] < cutPlaneZ && vertices[idx3 + 2] < cutPlaneZ) continue;
-        glVertex3f(vertices[idx1], vertices[idx1 + 1], vertices[idx1 + 2]);
-        glVertex3f(vertices[idx2], vertices[idx2 + 1], vertices[idx2 + 2]);
-        glVertex3f(vertices[idx3], vertices[idx3 + 1], vertices[idx3 + 2]);
-    }
-    glEnd();
-    glPopMatrix();
-}
-
 void DrawMesh(const Mesh& m, float translateX = 0.0f){
     glColor3f(0.0f, 1.0f, 1.0f);
     glPushMatrix();
@@ -83,16 +38,13 @@ void DrawMesh(const Mesh& m, float translateX = 0.0f){
     
     for (const auto& f: m.faces) {
         glColor3f(f.r, f.g, f.b);
-        // std::cout << color_idx << " rgb: " << r << g << b;
         glBegin(GL_POLYGON);
-        // glNormal3f(m.face_normals[idx])
         for (const auto& idx: f.vertexIndices){
             glNormal3f(m.vertices[idx].x, m.vertices[idx].y, m.vertices[idx].z);
             glVertex3f(m.vertices[idx].x, m.vertices[idx].y, m.vertices[idx].z);
         }
         glEnd();
     }
-    
     glPopMatrix();
 }
 
@@ -109,12 +61,10 @@ void CalcMeshColors(Mesh& m){
         y_mean /= f.vertexIndices.size();
 
         color_idx = {y_mean};
-        auto c = cppcolormap::as_colors(color_idx, cppcolormap::jet(), m.y_min, m.y_max);
+        auto c = cppcolormap::as_colors(color_idx, cppcolormap::viridis(), m.y_min, m.y_max);
         f.r = static_cast<float>(c(0, 0));
         f.g = static_cast<float>(c(0, 1));
         f.b = static_cast<float>(c(0, 2));
-        // auto cc = Color(r, g, b);
-        // m.face_color.push_back(cc);
     }
 }
 
@@ -125,14 +75,9 @@ void display() {
     glScalef(zoom, zoom, zoom);
     glRotatef(angleX, 1, 0, 0);
     glRotatef(angleY, 0, 1, 0);
-    drawCuttingPlane();
+    // drawCuttingPlane();
     float color1[3] = { 0.0f, 1.0f, 1.0f };
-    // drawMesh(vertices1, faces1, color1, loadSecondFile ? -1.5f : 0.0f);
     DrawMesh(humanoid);
-    if (loadSecondFile) {
-        float color2[3] = { 1.0f, 0.0f, 1.0f };
-        // drawMesh(vertices2, faces2, color2, 1.5f);
-    }
     glutSwapBuffers();
 }
 bool wireframe = false;
@@ -186,10 +131,10 @@ void initOpenGL() {
     glEnable(GL_LIGHT0);
 
     // Set light properties
-    GLfloat ambient[] = { 0.2f, 0.2f, 0.2f, 1.0f };  // Ambient light
-    GLfloat diffuse[] = { 0.3f, 0.3f, 0.3f, 1.0f };  // Diffuse light
-    GLfloat specular[] = { .3f, .3f, .3f, 1.0f }; // Specular light
-    GLfloat position[] = { .0f, .0f, 1.0f, 0.0f }; // Light position
+    GLfloat ambient[] = { 0.5f, 0.5f, 0.5f, 1.0f };  // Ambient light
+    GLfloat diffuse[] = { 0.05f, 0.05, 0.05f, 1.0f };  // Diffuse light
+    GLfloat specular[] = { .0f, .0f, .0f, 1.0f }; // Specular light
+    GLfloat position[] = { 1.0f, 1.0f, 1.0f, 0.0f }; // Light position
 
     glLightfv(GL_LIGHT0, GL_AMBIENT, ambient);
     glLightfv(GL_LIGHT0, GL_DIFFUSE, diffuse);
@@ -201,7 +146,7 @@ void initOpenGL() {
     glColorMaterial(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE);
 
     // Set material properties
-    GLfloat mat_specular[] = { .2f, .2f, .2f, 1.0f };
+    GLfloat mat_specular[] = { .0f, .0f, .0f, 1.0f };
     GLfloat mat_shininess[] = {.0f }; // Shininess factor
     glMaterialfv(GL_FRONT_AND_BACK, GL_SPECULAR, mat_specular);
     glMaterialfv(GL_FRONT_AND_BACK, GL_SHININESS, mat_shininess);
@@ -256,17 +201,9 @@ int main(int argc, char** argv) {
     char* fake_argv[] = { argv[0], nullptr };
     int fileCount = 1;
     
-    // std::string file1 = getFileFromUser("Enter path to first OBJ file: ");
     std::string file1 = "../../assets/obj/humanoid_robot.obj";
-    // loadOBJ(file1.c_str(), vertices1, faces1);
     humanoid.loadOBJ(file1);
     humanoid.printMeshStats();
-    // computeZBounds(vertices1);
-    // if (fileCount == 2) {
-    //     loadSecondFile = true;
-    //     std::string file2 = getFileFromUser("Enter path to second OBJ file: ");
-    //     loadOBJ(file2.c_str(), vertices2, faces2);
-    // }
     if (!flag_color_calced){
         CalcMeshColors(humanoid);
         flag_color_calced = true;
