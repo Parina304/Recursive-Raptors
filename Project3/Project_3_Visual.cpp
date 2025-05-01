@@ -581,12 +581,6 @@ if (ImGui::RadioButton("Material", currentViewMode == MODE_MATERIAL)) {
         ImGui::End();
         
         if (currentViewMode == MODE_MATERIAL) {
-
-            // static const std::string cmap_name = "viridis";
-            // static const  xt::xtensor<double, 2> cmap = cppcolormap::colormap(cmap_name, 256);
-
-            // draws the colorbar
-            // Get the current window size
             ImGuiIO& io = ImGui::GetIO();
             float windowWidth = io.DisplaySize.x;
             float windowHeight = io.DisplaySize.y;
@@ -607,35 +601,44 @@ if (ImGui::RadioButton("Material", currentViewMode == MODE_MATERIAL)) {
         
             // Draw the gradient colorbar
             ImDrawList* drawList = ImGui::GetWindowDrawList();
-            for (int i = 0; i < 100; ++i) {
-                float t = i / 99.0f; // Normalized value [0, 1]
-                // ImU32 color = (t < 0.5f)
-                //     ? IM_COL32(0, (int)(t * 2.0f * 255), 255, 255) // Blue → Green
-                //     : IM_COL32((int)((t - 0.5f) * 2.0f * 255), 255, 0, 255); // Green → Red
+            int gradient_segments = 256; // Increase for smoother gradient
+
+            for (int i = 0; i < gradient_segments; ++i) {
+                float t = 1 - (float)i / (gradient_segments - 1); // Normalized value [0, 1]
                 ImU32 color = Vec3ToImU32(InterpolateColormapToVec3(cmap, t));
         
-                float yStart = barPos.y + i * (barSize.y / 100.0f);
-                float yEnd = barPos.y + (i + 1) * (barSize.y / 100.0f);
+                float yStart = barPos.y + i * (barSize.y / gradient_segments);
+                float yEnd = barPos.y + (i + 1) * (barSize.y / gradient_segments);
                 drawList->AddRectFilled(ImVec2(barPos.x, yStart), ImVec2(barPos.x + barSize.x, yEnd), color);
         
-                // Debug: Check if the gradient is being drawn
-                // std::cout << "Drawing gradient segment " << i << std::endl;
             }
+
+            // Draw a border around the colorbar
+            // drawList->AddRect(barPos, ImVec2(barPos.x + barSize.x, barPos.y + barSize.y), IM_COL32(255, 255, 255, 255), 0.0f, 0, 2.0f);
         
             // Add labels for min and max values
-            // ImGui::SetCursorScreenPos(ImVec2(barPos.x + barSize.x + 5, barPos.y));
             ImGui::SetCursorScreenPos(ImVec2(barPos.x, barPos.y - 2 * ImGui::GetTextLineHeight()));
-            ImGui::Text("Min:\n%.2f", thickMin);
-            // ImGui::SetCursorScreenPos(ImVec2(barPos.x + barSize.x + 5, barPos.y + barSize.y - ImGui::GetTextLineHeight()));
+            ImGui::Text("Max:\n%.2f", *std::max_element(tps_metric_stacked.begin(), tps_metric_stacked.end()));
             ImGui::SetCursorScreenPos(ImVec2(barPos.x, barPos.y + barSize.y));
-            ImGui::Text("Max:\n%.2f", thickMax);
+            ImGui::Text("Min:\n%.2f", *std::min_element(tps_metric_stacked.begin(), tps_metric_stacked.end()));
         
             ImGui::End();
 
         // ---------------------------------------------------------------------
         // Thickness stacked‑area plot if Material mode is active
+            ImU32 magenta = IM_COL32(200, 50, 200, 255);
+            ImU32 green = IM_COL32(50, 200, 50, 255);
+            ImU32 orange = IM_COL32(200, 130, 50, 255);
+            ImU32 blue = IM_COL32(50, 100, 200, 255);
+            
+            int plot_height = 200;
+
+
+            ImGui::SetNextWindowPos(ImVec2(0, windowHeight - (2 * plot_height + 50)), ImGuiCond_Appearing); // 100px from the right
+            ImGui::SetNextWindowSize(ImVec2(windowWidth, (2 * plot_height + 50)), ImGuiCond_Appearing);
+            // ImGui::SetNextWindowSize(ImVec2(windowWidth, 2 * plot_height), ImGuiCond_Once);
             ImGui::Begin("Thickness Profile");
-            if (ImPlot::BeginPlot("Thickness Stacked", ImVec2(-1, 300))) {
+            if (ImPlot::BeginPlot("Thickness Stacked", ImVec2(-1, plot_height))) {
                 
                 
                 ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0f, *std::max_element(tps_metric_stacked.begin(), tps_metric_stacked.end()), ImPlotCond_Always);
@@ -644,19 +647,19 @@ if (ImGui::RadioButton("Material", currentViewMode == MODE_MATERIAL)) {
                 // ImPlot::SetupAxis(ImAxis_X1, "Height (m)", ImPlotAxisFlags_NoDecorations);
                 ImPlot::SetupAxis(ImAxis_X1, "Height (m)");
 
-                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(200, 50, 200, 255));
+                ImPlot::PushStyleColor(ImPlotCol_Fill, magenta);
                 ImPlot::PlotShaded("TPS", heights.data(), tps_metric_stacked.data(), N);
                 ImPlot::PopStyleColor();
 
-                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(50, 200, 50, 255));
+                ImPlot::PushStyleColor(ImPlotCol_Fill, green);
                 ImPlot::PlotShaded("Carbon", heights.data(), carbon_metric_stacked.data(), N);
                 ImPlot::PopStyleColor();
 
-                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(200, 130, 50, 255));
+                ImPlot::PushStyleColor(ImPlotCol_Fill, orange);
                 ImPlot::PlotShaded("Glue", heights.data(), glue_metric_stacked.data(), N);
                 ImPlot::PopStyleColor();
 
-                ImPlot::PushStyleColor(ImPlotCol_Fill, IM_COL32(50, 100, 200, 255));
+                ImPlot::PushStyleColor(ImPlotCol_Fill, blue);
                 ImPlot::PlotShaded("Steel", heights.data(), steel_metric.data(), N);
                 ImPlot::PopStyleColor();
 
@@ -665,32 +668,35 @@ if (ImGui::RadioButton("Material", currentViewMode == MODE_MATERIAL)) {
             ImGui::End();
 
             ImGui::Begin("Thickness Profile");
-            if (ImPlot::BeginPlot("Thickness Separate", ImVec2(-1, 300))) {
+            if (ImPlot::BeginPlot("Thickness Separate", ImVec2(-1, plot_height))) {
                 // Set up axes
-                ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0f, *std::max_element(tps.begin(), tps.end()), ImPlotCond_Always);
+                ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0f, *std::max_element(tps_metric.begin(), tps_metric.end()), ImPlotCond_Always);
                 ImPlot::SetupAxisLimits(ImAxis_X1, robotLength, 0.0f, ImPlotCond_Always);
                 ImPlot::SetupAxis(ImAxis_Y1, "Thickness (m)");
                 ImPlot::SetupAxis(ImAxis_X1, "Height (m)");
-
-                // Plot steel as a line
-                ImPlot::PushStyleColor(ImPlotCol_Line, IM_COL32(50, 100, 200, 255)); // Blue
-                ImPlot::PlotLine("Steel", heights.data(), steel.data(), N);
-                ImPlot::PopStyleColor();
-
-                // Plot glue as a line
-                ImPlot::PushStyleColor(ImPlotCol_Line, IM_COL32(200, 130, 50, 255)); // Orange
-                ImPlot::PlotLine("Glue", heights.data(), glue.data(), N);
+                
+                float line_thickness = 2.0f;
+                ImPlot::PushStyleVar(ImPlotStyleVar_LineWeight, line_thickness);
+                // Plot thermal as a line
+                ImPlot::PushStyleColor(ImPlotCol_Line, magenta); // Purple
+                ImPlot::PlotLine("TPS", heights.data(), tps_metric.data(), N);
                 ImPlot::PopStyleColor();
 
                 // Plot carbon as a line
-                ImPlot::PushStyleColor(ImPlotCol_Line, IM_COL32(50, 200, 50, 255)); // Green
-                ImPlot::PlotLine("Carbon", heights.data(), carbon.data(), N);
+                ImPlot::PushStyleColor(ImPlotCol_Line, green); // Green
+                ImPlot::PlotLine("Carbon", heights.data(), carbon_metric.data(), N);
                 ImPlot::PopStyleColor();
 
-                // Plot thermal as a line
-                ImPlot::PushStyleColor(ImPlotCol_Line, IM_COL32(200, 50, 200, 255)); // Purple
-                ImPlot::PlotLine("TPS", heights.data(), tps.data(), N);
+                // Plot glue as a line
+                ImPlot::PushStyleColor(ImPlotCol_Line, orange); // Orange
+                ImPlot::PlotLine("Glue", heights.data(), glue_metric.data(), N);
                 ImPlot::PopStyleColor();
+
+                // Plot steel as a line
+                ImPlot::PushStyleColor(ImPlotCol_Line, blue); // Blue
+                ImPlot::PlotLine("Steel", heights.data(), steel_metric.data(), N);
+                ImPlot::PopStyleColor();
+                ImPlot::PopStyleVar();
 
                 ImPlot::EndPlot();
             }
@@ -727,37 +733,12 @@ if (ImGui::RadioButton("Material", currentViewMode == MODE_MATERIAL)) {
                 maxZ = std::max(maxX, v.z);
             }
 
-            // for (const auto& f : F) {
-            //     float s = ((V[f.v[0]].x + V[f.v[1]].x + V[f.v[2]].x) / 3.0f - minX) / (maxX - minX);
-            //     float tv = 0.0f;
-            //     switch (f.mat) {
-            //     case 0: tv = interp1D(thermal, s); break;
-            //     case 1: tv = interp1D(glue, s); break;
-            //     case 2: tv = interp1D(carbon, s); break;
-            //     default: break;
-            //     }
-            //     float tn = std::clamp((tv - thickMin) / (thickMax - thickMin), 0.0f, 1.0f);
-            //     glm::vec3 col = (tn < 0.5f)
-            //         ? glm::mix(glm::vec3(0, 0, 1), glm::vec3(0, 1, 0), tn * 2.0f)
-            //         : glm::mix(glm::vec3(0, 1, 0), glm::vec3(1, 0, 0), (tn - 0.5f) * 2.0f);
-
-            //     vertex_colors[f.v[0]] = vertex_colors[f.v[1]] = vertex_colors[f.v[2]] = col;
-            // }
-
             for (int i = 0; i < V.size(); i++) {
                 const auto& v = V[i];
                 float normalized_y_at_v = (v.y - minY) / (maxY - minY);
                 float tps_at_v = interp1D(tps_metric_stacked, normalized_y_at_v);
-                // std::cout << normalized_y_at_v << " " << tps_at_v << " " << 
-                // *std::min_element(thermal.begin(), thermal.end()) << " " << 
-                // *std::max_element(thermal.begin(), thermal.end()) << "\n";
 
                 float normalized_tps_at_v = Normalize(tps_at_v, tps_metric_stacked);
-                // float tv = interp1D(thermal, v.z);
-                // float tn = std::clamp((v.y - minY) / (maxY - minY), 0.0f, 1.0f);
-                // glm::vec3 col = (normalized_tps_at_v < 0.5f)
-                //     ? glm::mix(glm::vec3(0, 0, 1), glm::vec3(0, 1, 0), normalized_tps_at_v * 2.0f)
-                //     : glm::mix(glm::vec3(0, 1, 0), glm::vec3(1, 0, 0), (normalized_tps_at_v - 0.5f) * 2.0f);
                 vertex_colors[i] = InterpolateColormapToVec3(cmap, normalized_tps_at_v);
             }
 
