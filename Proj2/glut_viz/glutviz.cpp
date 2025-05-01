@@ -12,7 +12,7 @@
 #include <fstream>
 #include <sstream>
 #include "cppcolormap.h"
-#include "ColormapWrapper.h"
+// #include "ColormapWrapper.h"
 #include <xtensor/xio.hpp>
 
 bool loadSecondFile = false;  // Flag to check if user wants to load 2 files
