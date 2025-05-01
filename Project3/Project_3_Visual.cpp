@@ -1,17 +1,17 @@
-// mesh_viewer.cpp – single‑file demo that toggles between a 3‑D and 2‑D OBJ
+// mesh_viewer.cpp – single‑file demo that toggles between a 3‑D and 2‑D OBJ.
 // model and still supports Face, Wireframe, and Material colouring modes.
 //
-// Build:
-//   g++ mesh_viewer.cpp -I<path‑to‑glad> -I<path‑to‑glm> -lglfw -ldl -lGL -std=c++17 -o viewer
-// (plus the ImGui / ImPlot / glad sources in your build system)
+// Build:.
+// g++ mesh_viewer.cpp -I<path‑to‑glad> -I<path‑to‑glm> -lglfw -ldl -lGL -std=c++17 -o viewer.
+// (plus the ImGui / ImPlot / glad sources in your build system).
 //
-// Controls:
-//   • Radio buttons   : pick 3‑D vs 2‑D mesh, view mode, and cut plane.
-//   • W key           : cycles Face/Wireframe/Material if the GUI is hidden.
-//   • Mouse (LMB)     : orbit
-//   • Mouse (RMB)     : pan
-//   • Scroll          : dolly zoom
-//--------------------------------------------------------------------------
+// Controls:.
+// • Radio buttons   : pick 3‑D vs 2‑D mesh, view mode, and cut plane.
+// • W key           : cycles Face/Wireframe/Material if the GUI is hidden.
+// • Mouse (LMB)     : orbit.
+// • Mouse (RMB)     : pan.
+// • Scroll          : dolly zoom.
+// --------------------------------------------------------------------------.
 
 #ifdef _WIN32
 #define BASE_PATH "./"
@@ -28,7 +28,7 @@
 #include <sstream>
 #include <vector>
 #include <algorithm>
-// #include <unistd.h>
+// #include <unistd.h>.
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
@@ -44,74 +44,74 @@
 #include <xtensor/xio.hpp>
 
 
-//--------------------------------------------------------------------------
-// ENUMERATIONS
-//--------------------------------------------------------------------------
+// --------------------------------------------------------------------------.
+// Enumerations.
+// --------------------------------------------------------------------------.
 
-// 3 visual styles (shading) that apply no matter which mesh is loaded
+// 3 visual styles (shading) that apply no matter which mesh is loaded.
 enum ViewMode { MODE_FACE = 0, MODE_WIREFRAME, MODE_MATERIAL };
 static ViewMode currentViewMode = MODE_FACE;
 
-// Which mesh is currently resident on the GPU
+// Which mesh is currently resident on the GPU.
 enum MeshType { MESH_3D = 0, MESH_2D, MESH_TPS };
 static MeshType currentMeshType = MESH_3D;
 
-//--------------------------------------------------------------------------
-// CAMERA / INTERACTION STATE
-//--------------------------------------------------------------------------
+// --------------------------------------------------------------------------.
+// Camera / interaction state.
+// --------------------------------------------------------------------------.
 static float camYaw = 0.0f, camPitch = 0.0f, camDistance = 5.0f;
 static float panX = 0.0f, panY = 0.0f;
 static bool  leftMouse = false, rightMouse = false;
 static double lastX = 0.0, lastY = 0.0;
 
-//--------------------------------------------------------------------------
-// CUTTING PLANE
-//--------------------------------------------------------------------------
+// --------------------------------------------------------------------------.
+// Cutting plane.
+// --------------------------------------------------------------------------.
 static float cutPlaneZ = 0.0f;   // in model space (metres)
 
-//--------------------------------------------------------------------------
-// THICKNESS PROFILES (loaded from CSV)
-//--------------------------------------------------------------------------
+// --------------------------------------------------------------------------.
+// THICKNESS PROFILES (loaded from CSV).
+// --------------------------------------------------------------------------.
 static std::vector<float> carbon, glue, steel;
 static float thickMin = 1e9f, thickMax = -1e9f;
-static std::vector<float> heights, tps, 
-    steel_metric, glue_metric, carbon_metric, tps_metric, 
-    glue_metric_stacked, carbon_metric_stacked, tps_metric_stacked;
+static std::vector<float> heights, tps,
+steel_metric, glue_metric, carbon_metric, tps_metric,
+glue_metric_stacked, carbon_metric_stacked, tps_metric_stacked;
 static const float robotLength = 2.5f;                   // m
 static std::vector<float> thermZ, thermT;                // thermal profile
 
-//--------------------------------------------------------------------------
-// OPENGL RESOURCES THAT NEED TO BE RECREATED WHENEVER WE SWITCH MESH
-//--------------------------------------------------------------------------
+// --------------------------------------------------------------------------.
+// Opengl resources that need to be recreated whenever we switch mesh.
+// --------------------------------------------------------------------------.
 static GLuint VAO = 0, VBO = 0, CBO = 0, EBO = 0;
 static Mesh   mesh;                       // CPU‑side representation (faces, verts)
 static std::vector<glm::vec3>   V;
 static std::vector<Face>        F;
 static std::vector<unsigned int>I;
 
-//--------------------------------------------------------------------------
-// FORWARD DECLARATIONS
-//--------------------------------------------------------------------------
+// --------------------------------------------------------------------------.
+// Forward declarations.
+// --------------------------------------------------------------------------.
 bool  loadThicknessCSV();                     // called once at start‑up
 bool  loadMeshToGPU(const std::string& path); // used every time mesh changes
 GLuint compileShader(GLenum, const char*);
 GLuint createProgram();
 
-// Really short Functions
+// Really short Functions.
 #define Min(arr) *std::min_element(arr.begin(), arr.end());
 #define Max(arr) *std::max_element(arr.begin(), arr.end());
 #define Normalize(elem, arr) std::clamp((elem - *std::min_element(arr.begin(), arr.end())) / (*std::max_element(arr.begin(), arr.end()) - *std::min_element(arr.begin(), arr.end())), 0.f, 1.f);
 
-//--------------------------------------------------------------------------
-// CSV HELPERS (single‑column and two‑column)
-//--------------------------------------------------------------------------
+// --------------------------------------------------------------------------.
+// CSV HELPERS (single‑column and two‑column).
+// --------------------------------------------------------------------------.
 
-// makes excutable compatible in ./ or ./build  
+// makes excutable compatible in ./ or ./build.
 std::string PrependBasePath(const std::string& path) {
     return BASE_PATH + path;
 }
 
-// Load two-column CSV (position,value)
+// Load two-column CSV (position,value).
 std::vector<float> loadProfile1(const std::string& fname) {
     std::vector<float> vals;
     std::ifstream in(fname);
@@ -145,8 +145,8 @@ static void loadThermal(const std::string& fname)
     }
 }
 
-// Linear look‑ups for material and thermal profiles
-// s shold be float between 0.0 and 1.0, and will be clamped to that interval if it exceeds
+// Linear look‑ups for material and thermal profiles.
+// s shold be float between 0.0 and 1.0, and will be clamped to that interval if it exceeds.
 static float interp1D(const std::vector<float>& arr, float s)
 {
     s = std::clamp(s, 0.f, 1.f);
@@ -172,7 +172,7 @@ static float interpThermal(float h)
     return thermT[lo] * (1.0f - f) + thermT[hi] * f;
 }
 
-// Color helper functions
+// Color helper functions.
 glm::vec3 ImU32ToVec3(ImU32 color) {
     float r = ((color >> IM_COL32_R_SHIFT) & 0xFF) / 255.0f; // Extract red
     float g = ((color >> IM_COL32_G_SHIFT) & 0xFF) / 255.0f; // Extract green
@@ -189,39 +189,39 @@ ImU32 Vec3ToImU32(const glm::vec3& color, float alpha = 1.0f) {
 }
 
 static glm::vec3 InterpolateColormapToVec3(const xt::xtensor<double, 2>& colormap, float s) {
-    // Clamp s to the range [0.0, 1.0]
+    // Clamp s to the range [0.0, 1.0].
     s = std::clamp(s, 0.0f, 1.0f);
 
-    // Map s to an index in the colormap
+    // Map s to an index in the colormap.
     size_t index = static_cast<size_t>(s * (colormap.shape(0) - 1));
 
-    // Extract the RGB values (normalized to [0.0, 1.0])
+    // Extract the RGB values (normalized to [0.0, 1.0]).
     float r = static_cast<float>(colormap(index, 0));
     float g = static_cast<float>(colormap(index, 1));
     float b = static_cast<float>(colormap(index, 2));
 
-    // Convert to ImU32 (RGBA format, alpha = 255)
+    // Convert to ImU32 (RGBA format, alpha = 255).
     return glm::vec3(r, g, b);
 }
 
-//--------------------------------------------------------------------------
-// MESH LOADING + GPU BUFFER UPLOAD
-//--------------------------------------------------------------------------
+// --------------------------------------------------------------------------.
+// Mesh loading + gpu buffer upload.
+// --------------------------------------------------------------------------.
 
 bool loadMeshToGPU(const std::string& path)
 {
-    // 1) Load into your CPU‐side mesh object
+    // 1) Load into your CPU‐side mesh object.
     if (!mesh.loadOBJ(path)) {
         std::cerr << "[OBJ] Failed to load " << path << "\n";
         return false;
     }
 
-    // 2) Copy raw vertices & faces
+    // 2) Copy raw vertices & faces.
     V = mesh.vertices;
     F = mesh.faces;
 
-    // ──────────────────────────────────────────────────────────────────────────
-    // 3) FILTER OUT BAD FACES (guard against out-of-range indices)
+    // ──────────────────────────────────────────────────────────────────────────.
+    // 3) FILTER OUT BAD FACES (guard against out-of-range indices).
     std::vector<Face> filteredF;
     filteredF.reserve(F.size());
     for (auto& f : F) {
@@ -234,9 +234,9 @@ bool loadMeshToGPU(const std::string& path)
         }
     }
     F.swap(filteredF);
-    // ──────────────────────────────────────────────────────────────────────────
+    // ──────────────────────────────────────────────────────────────────────────.
 
-    // 4) Rebuild your index buffer from the sanitized face list
+    // 4) Rebuild your index buffer from the sanitized face list.
     I.clear();
     I.reserve(F.size() * 3);
     for (auto& f : F) {
@@ -245,7 +245,7 @@ bool loadMeshToGPU(const std::string& path)
         I.push_back(f.v[2]);
     }
 
-    // 5) (Re)upload VBO, CBO, EBO exactly as before…
+    // 5) (Re)upload VBO, CBO, EBO exactly as before….
     if (VAO == 0) {
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
@@ -255,20 +255,20 @@ bool loadMeshToGPU(const std::string& path)
 
     glBindVertexArray(VAO);
 
-    // vertex positions
+    // vertex positions.
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, V.size() * sizeof(glm::vec3), V.data(), GL_STATIC_DRAW);
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
     glEnableVertexAttribArray(0);
 
-    // default grey colours
+    // default grey colours.
     std::vector<glm::vec3> defCols(V.size(), glm::vec3(0.8f));
     glBindBuffer(GL_ARRAY_BUFFER, CBO);
     glBufferData(GL_ARRAY_BUFFER, defCols.size() * sizeof(glm::vec3), defCols.data(), GL_DYNAMIC_DRAW);
     glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
     glEnableVertexAttribArray(1);
 
-    // triangle indices
+    // triangle indices.
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, I.size() * sizeof(unsigned int), I.data(), GL_STATIC_DRAW);
 
@@ -278,17 +278,17 @@ bool loadMeshToGPU(const std::string& path)
 
 void frameMeshOnLoad()
 {
-    // compute axis-aligned bounding box of the newly loaded mesh
+    // compute axis-aligned bounding box of the newly loaded mesh.
     glm::vec3 mn(1e9f), mx(-1e9f);
     for (auto& v : mesh.vertices) {
         mn = glm::min(mn, v);
         mx = glm::max(mx, v);
     }
-    // center in X,Y (we treat Z as depth for 3D)
+    // center in X,Y (we treat Z as depth for 3D).
     glm::vec3 center = (mn + mx) * 0.5f;
     panX = center.x;
     panY = center.y;
-    // radius = half the diagonal
+    // radius = half the diagonal.
     float radius = glm::length(mx - mn) * 0.5f;
     if (radius < 1e-3f) radius = 1.0f;
     camDistance = radius * 3.0f;    // 3× so you see it comfortably
@@ -296,9 +296,9 @@ void frameMeshOnLoad()
     camPitch = 0.0f;
 }
 
-//--------------------------------------------------------------------------
-// SHADERS (single clip plane)
-//--------------------------------------------------------------------------
+// --------------------------------------------------------------------------.
+// SHADERS (single clip plane).
+// --------------------------------------------------------------------------.
 static const char* vSrc = R"(
 #version 330 core
 layout(location=0) in vec3 aPos;
@@ -356,9 +356,9 @@ GLuint createProgram()
 }
 const std::string OBJ_TPS = PrependBasePath("assets/obj/humanoid_robot_3d_thickened_scaled_3_hr.obj");
 
-//--------------------------------------------------------------------------
-// GLFW CALLBACKS
-//--------------------------------------------------------------------------
+// --------------------------------------------------------------------------.
+// Glfw callbacks.
+// --------------------------------------------------------------------------.
 static void key_cb(GLFWwindow* window, int key, int /*scancode*/, int action, int /*mods*/)
 {
     if (action != GLFW_PRESS)
@@ -366,14 +366,14 @@ static void key_cb(GLFWwindow* window, int key, int /*scancode*/, int action, in
 
     if (key == GLFW_KEY_W)
     {
-        // 1) cycle Face→Wireframe→Material
+        // 1) cycle Face→Wireframe→Material.
         currentViewMode = ViewMode((currentViewMode + 1) % 3);
 
-        // 2) set OpenGL fill/line
+        // 2) set OpenGL fill/line.
         GLenum mode = (currentViewMode == MODE_WIREFRAME ? GL_LINE : GL_FILL);
         glPolygonMode(GL_FRONT_AND_BACK, mode);
 
-        // 3) if we just switched into Material, force-load the TPS-2D mesh
+        // 3) if we just switched into Material, force-load the TPS-2D mesh.
         if (currentViewMode == MODE_MATERIAL && currentMeshType != MESH_TPS)
         {
             if (loadMeshToGPU(OBJ_TPS))
@@ -400,7 +400,7 @@ static void key_cb(GLFWwindow* window, int key, int /*scancode*/, int action, in
 
 static void mouse_btn_cb(GLFWwindow*, int button, int action, int)
 {
-    // if mouse is over any ImGui window or plot, do not start/stop camera drag
+    // if mouse is over any ImGui window or plot, do not start/stop camera drag.
     if (ImGui::GetIO().WantCaptureMouse)
         return;
 
@@ -411,7 +411,7 @@ static void mouse_btn_cb(GLFWwindow*, int button, int action, int)
 }
 static void cursor_cb(GLFWwindow*, double x, double y)
 {
-    // ignore camera motion when interacting with UI
+    // ignore camera motion when interacting with UI.
     if (ImGui::GetIO().WantCaptureMouse)
         return;
 
@@ -433,7 +433,7 @@ static void cursor_cb(GLFWwindow*, double x, double y)
 }
 static void scroll_cb(GLFWwindow*, double, double yoff)
 {
-    // ignore zoom when over UI
+    // ignore zoom when over UI.
     if (ImGui::GetIO().WantCaptureMouse)
         return;
 
@@ -442,9 +442,9 @@ static void scroll_cb(GLFWwindow*, double, double yoff)
 }
 
 
-//--------------------------------------------------------------------------
-// MAIN
-//--------------------------------------------------------------------------
+// --------------------------------------------------------------------------.
+// Main.
+// --------------------------------------------------------------------------.
 int main()
 {
     if (!glfwInit()) return 1;
@@ -462,9 +462,9 @@ int main()
     glfwSetScrollCallback(win, scroll_cb);
     glfwGetCursorPos(win, &lastX, &lastY);
 
-    // ── ImGui + ImPlot ─────────────────────────────────────────────────────────
-    IMGUI_CHECKVERSION(); 
-    ImGui::CreateContext(); 
+    // ── ImGui + ImPlot ─────────────────────────────────────────────────────────.
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO();
     io.FontGlobalScale = FONT_SIZE;
     ImPlot::CreateContext();
@@ -475,25 +475,25 @@ int main()
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-    //------------------------------------------------------------------ CSV ----
+    // ------------------------------------------------------------------ csv ----.
     carbon = loadProfile1(PrependBasePath("assets/csv/carbon_thickness.csv"));
     glue = loadProfile1(PrependBasePath("assets/csv/glue_thickness.csv"));
     steel = loadProfile1(PrependBasePath("assets/csv/steel_thickness.csv"));
     loadThermal(PrependBasePath("assets/csv/Thickness_1_hr.csv"));
 
-    // Load CSV profiles from assets/csv
+    // Load CSV profiles from assets/csv.
     int N = (int)carbon.size();
     heights.resize(N);
     tps.resize(N);
-    steel_metric.resize(N); 
-    glue_metric.resize(N); 
-    carbon_metric.resize(N); 
+    steel_metric.resize(N);
+    glue_metric.resize(N);
+    carbon_metric.resize(N);
     tps_metric.resize(N);
-    glue_metric_stacked.resize(N); 
-    carbon_metric_stacked.resize(N); 
+    glue_metric_stacked.resize(N);
+    carbon_metric_stacked.resize(N);
     tps_metric_stacked.resize(N);
 
-    // calculate thicknesses
+    // calculate thicknesses.
     for (int i = 0; i < N; ++i) {
         float s = i / float(N - 1);
         heights[i] = s * robotLength;
@@ -507,17 +507,17 @@ int main()
         tps_metric_stacked[i] = carbon_metric_stacked[i] + tps_metric[i];
     }
 
-    // cmap constants
+    // cmap constants.
     static const std::string cmap_name = "GnBu_r";
     static const  xt::xtensor<double, 2> cmap = cppcolormap::colormap(cmap_name, 256);
-    //----------------------------------------------------------------- OBJ ----
+    // ----------------------------------------------------------------- obj ----.
     const std::string OBJ_3D = PrependBasePath("assets/obj/humanoid_robot.obj");
     const std::string OBJ_2D = PrependBasePath("assets/obj/humanoid_robot_2d.obj");
     const std::string OBJ_TPS = PrependBasePath("assets/obj/humanoid_robot_3d_thickened_scaled_3_hr.obj");
 
     if (!loadMeshToGPU(OBJ_3D)) return 1;          // start with 3‑D model
 
-    //----------------------------------------------------------------- GLSL ----
+    // ----------------------------------------------------------------- glsl ----.
 
     GLuint prog = createProgram();
     GLint  locMVP = glGetUniformLocation(prog, "uMVP");
@@ -527,13 +527,13 @@ int main()
     glEnable(GL_CLIP_DISTANCE0);
     glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-    //---------------------------------------------------------------- MAIN LOOP -
+    // ---------------------------------------------------------------- main loop -.
     while (!glfwWindowShouldClose(win)) {
         glfwPollEvents();
         int fbW, fbH; glfwGetFramebufferSize(win, &fbW, &fbH);
         fbH = std::max(fbH, 1);
 
-        // ── ImGui frame ───────────────────────────────────────────────────────
+        // ── ImGui frame ───────────────────────────────────────────────────────.
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
@@ -541,8 +541,8 @@ int main()
         ImGui::SetNextWindowSize(ImVec2(280, 0), ImGuiCond_Once);
         ImGui::Begin("Controls");
 
-        // --- Mesh selection ---------------------------------------------------
-        
+        // --- Mesh selection ---------------------------------------------------.
+
         ImGui::BeginDisabled(currentViewMode == MODE_MATERIAL);
         ImGui::Text("Mesh");
         if (ImGui::RadioButton("3D", currentMeshType == MESH_3D)) {
@@ -565,92 +565,92 @@ int main()
         if (ImGui::Button("Zoom to Fit (F)")) { frameMeshOnLoad(); }
         ImGui::Text("View Mode (Switch using 'W')");
         if (ImGui::RadioButton("Face", currentViewMode == MODE_FACE)) {
-    currentViewMode = MODE_FACE;
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-}
-if (ImGui::RadioButton("Wireframe", currentViewMode == MODE_WIREFRAME)) {
-    currentViewMode = MODE_WIREFRAME;
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-}
-if (ImGui::RadioButton("Material", currentViewMode == MODE_MATERIAL)) {
-    currentViewMode = MODE_MATERIAL;
-    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-    // automatically switch mesh to TPS-2D:
-    if (currentMeshType != MESH_TPS) {
-      loadMeshToGPU(OBJ_TPS);
-      currentMeshType = MESH_TPS;
-      frameMeshOnLoad();
-    }
-}
+            currentViewMode = MODE_FACE;
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+        }
+        if (ImGui::RadioButton("Wireframe", currentViewMode == MODE_WIREFRAME)) {
+            currentViewMode = MODE_WIREFRAME;
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        }
+        if (ImGui::RadioButton("Material", currentViewMode == MODE_MATERIAL)) {
+            currentViewMode = MODE_MATERIAL;
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+            // automatically switch mesh to TPS-2D:.
+            if (currentMeshType != MESH_TPS) {
+                loadMeshToGPU(OBJ_TPS);
+                currentMeshType = MESH_TPS;
+                frameMeshOnLoad();
+            }
+        }
         ImGui::Separator();
         ImGui::SliderFloat("Cut Z", &cutPlaneZ, -1.0f, 1.0f, "%.2f m");
         ImGui::End();
-        
+
         if (currentViewMode == MODE_MATERIAL) {
             ImGuiIO& io = ImGui::GetIO();
             float windowWidth = io.DisplaySize.x;
             float windowHeight = io.DisplaySize.y;
 
-            // Dynamically position the colorbar on the right side
+            // Dynamically position the colorbar on the right side.
             ImGui::SetNextWindowPos(ImVec2(windowWidth - 100, 50), ImGuiCond_Always); // 100px from the right
             ImGui::SetNextWindowSize(ImVec2(80, windowHeight - 100), ImGuiCond_Always); // 80px wide, dynamic height
 
             ImGui::Begin("Colorbar", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse);
-            // ImGui::SetNextWindowPos(ImVec2(50, 50), ImGuiCond_Once); // Set position
-            // ImGui::Begin("Colorbar");
-        
-        
-            // Define the size and position of the colorbar
+            // ImGui::SetNextWindowPos(ImVec2(50, 50), ImGuiCond_Once); // Set position.
+            // ImGui::Begin("Colorbar");.
+
+
+            // Define the size and position of the colorbar.
             ImVec2 barSize = ImVec2(40, 200); // Width: 20px, Height: 200px
             ImVec2 barPos = ImGui::GetCursorScreenPos(); // Position at the current cursor
             barPos.y += 2 * ImGui::GetTextLineHeight();
-        
-            // Draw the gradient colorbar
+
+            // Draw the gradient colorbar.
             ImDrawList* drawList = ImGui::GetWindowDrawList();
             int gradient_segments = 256; // Increase for smoother gradient
 
             for (int i = 0; i < gradient_segments; ++i) {
                 float t = 1 - (float)i / (gradient_segments - 1); // Normalized value [0, 1]
                 ImU32 color = Vec3ToImU32(InterpolateColormapToVec3(cmap, t));
-        
+
                 float yStart = barPos.y + i * (barSize.y / gradient_segments);
                 float yEnd = barPos.y + (i + 1) * (barSize.y / gradient_segments);
                 drawList->AddRectFilled(ImVec2(barPos.x, yStart), ImVec2(barPos.x + barSize.x, yEnd), color);
-        
+
             }
 
-            // Draw a border around the colorbar
-            // drawList->AddRect(barPos, ImVec2(barPos.x + barSize.x, barPos.y + barSize.y), IM_COL32(255, 255, 255, 255), 0.0f, 0, 2.0f);
-        
-            // Add labels for min and max values
+            // Draw a border around the colorbar.
+            // drawList->AddRect(barPos, ImVec2(barPos.x + barSize.x, barPos.y + barSize.y), IM_COL32(255, 255, 255, 255), 0.0f, 0, 2.0f);.
+
+            // Add labels for min and max values.
             ImGui::SetCursorScreenPos(ImVec2(barPos.x, barPos.y - 2 * ImGui::GetTextLineHeight()));
             ImGui::Text("Max:\n%.2f", *std::max_element(tps_metric_stacked.begin(), tps_metric_stacked.end()));
             ImGui::SetCursorScreenPos(ImVec2(barPos.x, barPos.y + barSize.y));
             ImGui::Text("Min:\n%.2f", *std::min_element(tps_metric_stacked.begin(), tps_metric_stacked.end()));
-        
+
             ImGui::End();
 
-        // ---------------------------------------------------------------------
-        // Thickness stacked‑area plot if Material mode is active
+            // ---------------------------------------------------------------------.
+            // Thickness stacked‑area plot if Material mode is active.
             ImU32 magenta = IM_COL32(200, 50, 200, 255);
             ImU32 green = IM_COL32(50, 200, 50, 255);
             ImU32 orange = IM_COL32(200, 130, 50, 255);
             ImU32 blue = IM_COL32(50, 100, 200, 255);
-            
+
             int plot_height = 250;
 
 
             ImGui::SetNextWindowPos(ImVec2(0, windowHeight - (2 * plot_height + 50)), ImGuiCond_Appearing); // 100px from the right
             ImGui::SetNextWindowSize(ImVec2(windowWidth, (2 * plot_height + 50)), ImGuiCond_Appearing);
-            // ImGui::SetNextWindowSize(ImVec2(windowWidth, 2 * plot_height), ImGuiCond_Once);
+            // ImGui::SetNextWindowSize(ImVec2(windowWidth, 2 * plot_height), ImGuiCond_Once);.
             ImGui::Begin("Thickness Profile");
             if (ImPlot::BeginPlot("Thickness Stacked", ImVec2(-1, plot_height))) {
-                
-                
+
+
                 ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0f, *std::max_element(tps_metric_stacked.begin(), tps_metric_stacked.end()), ImPlotCond_Always);
                 ImPlot::SetupAxisLimits(ImAxis_X1, robotLength, 0.0f, ImPlotCond_Always);
                 ImPlot::SetupAxis(ImAxis_Y1, "Thickness (m)");
-                // ImPlot::SetupAxis(ImAxis_X1, "Height (m)", ImPlotAxisFlags_NoDecorations);
+                // ImPlot::SetupAxis(ImAxis_X1, "Height (m)", ImPlotAxisFlags_NoDecorations);.
                 ImPlot::SetupAxis(ImAxis_X1, "Height (m)");
 
                 ImPlot::PushStyleColor(ImPlotCol_Fill, magenta);
@@ -675,30 +675,30 @@ if (ImGui::RadioButton("Material", currentViewMode == MODE_MATERIAL)) {
 
             ImGui::Begin("Thickness Profile");
             if (ImPlot::BeginPlot("Thickness Separate", ImVec2(-1, plot_height))) {
-                // Set up axes
+                // Set up axes.
                 ImPlot::SetupAxisLimits(ImAxis_Y1, 0.0f, *std::max_element(tps_metric.begin(), tps_metric.end()), ImPlotCond_Always);
                 ImPlot::SetupAxisLimits(ImAxis_X1, robotLength, 0.0f, ImPlotCond_Always);
                 ImPlot::SetupAxis(ImAxis_Y1, "Thickness (m)");
                 ImPlot::SetupAxis(ImAxis_X1, "Height (m)");
-                
+
                 float line_thickness = 2.0f;
                 ImPlot::PushStyleVar(ImPlotStyleVar_LineWeight, line_thickness);
-                // Plot thermal as a line
+                // Plot thermal as a line.
                 ImPlot::PushStyleColor(ImPlotCol_Line, magenta); // Purple
                 ImPlot::PlotLine("TPS", heights.data(), tps_metric.data(), N);
                 ImPlot::PopStyleColor();
 
-                // Plot carbon as a line
+                // Plot carbon as a line.
                 ImPlot::PushStyleColor(ImPlotCol_Line, green); // Green
                 ImPlot::PlotLine("Carbon", heights.data(), carbon_metric.data(), N);
                 ImPlot::PopStyleColor();
 
-                // Plot glue as a line
+                // Plot glue as a line.
                 ImPlot::PushStyleColor(ImPlotCol_Line, orange); // Orange
                 ImPlot::PlotLine("Glue", heights.data(), glue_metric.data(), N);
                 ImPlot::PopStyleColor();
 
-                // Plot steel as a line
+                // Plot steel as a line.
                 ImPlot::PushStyleColor(ImPlotCol_Line, blue); // Blue
                 ImPlot::PlotLine("Steel", heights.data(), steel_metric.data(), N);
                 ImPlot::PopStyleColor();
@@ -711,7 +711,7 @@ if (ImGui::RadioButton("Material", currentViewMode == MODE_MATERIAL)) {
 
         ImGui::Render();
 
-        // ── Camera matrices ───────────────────────────────────────────────────
+        // ── Camera matrices ───────────────────────────────────────────────────.
         glm::vec3 tgt(panX, panY, 0.0f);
         float     yR = glm::radians(camYaw);
         float     pR = glm::radians(camPitch);
@@ -722,9 +722,9 @@ if (ImGui::RadioButton("Material", currentViewMode == MODE_MATERIAL)) {
         glm::mat4 proj = glm::perspective(glm::radians(60.0f), fbW / float(fbH), 0.1f, 1000.0f);
         glm::mat4 MVP = proj * view;
 
-        // ——————————————————————————————————————————————
-        // MATERIAL COLOURS (replace your entire original block)
-        // ——————————————————————————————————————————————
+        // ——————————————————————————————————————————————.
+        // MATERIAL COLOURS (replace your entire original block).
+        // ——————————————————————————————————————————————.
         if (currentViewMode == MODE_MATERIAL) {
             std::vector<glm::vec3> vertex_colors(V.size());
             float minX = 1e9f, maxX = -1e9f;
@@ -752,7 +752,7 @@ if (ImGui::RadioButton("Material", currentViewMode == MODE_MATERIAL)) {
             glBufferSubData(GL_ARRAY_BUFFER, 0, vertex_colors.size() * sizeof(glm::vec3), vertex_colors.data());
         }
         else {
-            // your grey‐only fallback (unchanged)
+            // your grey‐only fallback (unchanged).
             std::vector<glm::vec3> grey(V.size(), glm::vec3(0.8f));
             glBindBuffer(GL_ARRAY_BUFFER, CBO);
             glBufferSubData(
@@ -764,7 +764,7 @@ if (ImGui::RadioButton("Material", currentViewMode == MODE_MATERIAL)) {
         }
 
 
-        // ── Drawing Mesh ───────────────────────────────────────────────────────────
+        // ── Drawing Mesh ───────────────────────────────────────────────────────────.
         glViewport(0, 0, fbW, fbH);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
