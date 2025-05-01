@@ -631,7 +631,7 @@ if (ImGui::RadioButton("Material", currentViewMode == MODE_MATERIAL)) {
             ImU32 orange = IM_COL32(200, 130, 50, 255);
             ImU32 blue = IM_COL32(50, 100, 200, 255);
             
-            int plot_height = 200;
+            int plot_height = 250;
 
 
             ImGui::SetNextWindowPos(ImVec2(0, windowHeight - (2 * plot_height + 50)), ImGuiCond_Appearing); // 100px from the right
