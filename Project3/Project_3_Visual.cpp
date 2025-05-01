@@ -158,7 +158,8 @@ std::vector<float> loadProfile1(const std::string& fname) {
             vals.push_back(v);
             thickMin = std::min(thickMin, v);
             thickMax = std::max(thickMax, v);
-        } catch (const std::exception& e) {
+        }
+        catch (const std::exception& e) {
             std::cerr << "[CSV] WARNING: Skipping invalid line: " << line << " (" << e.what() << ")\n";
             continue;
         }
@@ -431,7 +432,7 @@ GLuint createProgram()
     glDeleteShader(fs);
     return p;
 }
-const std::string OBJ_TPS = PrependBasePath("assets/obj/humanoid_robot_3d_thickened_scaled_3_hr.obj");
+const std::string OBJ_TPS = PrependBasePath("assets/obj/TPS_3_hr.obj");
 
 // --------------------------------------------------------------------------.
 // Glfw callbacks.
@@ -556,7 +557,7 @@ int main()
     carbon = loadProfile1(PrependBasePath("assets/csv/carbon_thickness.csv"));
     glue = loadProfile1(PrependBasePath("assets/csv/glue_thickness.csv"));
     steel = loadProfile1(PrependBasePath("assets/csv/steel_thickness.csv"));
-    loadThermal(PrependBasePath("assets/csv/Thickness_1_hr.csv"));
+    loadThermal(PrependBasePath("assets/csv/Thickness_3_hr.csv"));
 
     // Check material vectors
     if (carbon.empty() || glue.empty() || steel.empty()) {
@@ -601,7 +602,7 @@ int main()
     // ----------------------------------------------------------------- obj ----.
     const std::string OBJ_3D = PrependBasePath("assets/obj/humanoid_robot.obj");
     const std::string OBJ_2D = PrependBasePath("assets/obj/humanoid_robot_2d.obj");
-    const std::string OBJ_TPS = PrependBasePath("assets/obj/humanoid_robot_3d_thickened_scaled_3_hr.obj");
+    const std::string OBJ_TPS = PrependBasePath("assets/obj/TPS_3_hr.obj");
 
     if (!loadMeshToGPU(OBJ_3D)) return 1;          // start with 3‑D model
 
