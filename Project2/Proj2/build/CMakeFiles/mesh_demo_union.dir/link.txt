@@ -1,0 +1,3 @@
+C:\msys64\mingw64\bin\cmake.exe -E rm -f CMakeFiles\mesh_demo_union.dir/objects.a
+C:\msys64\mingw64\bin\ar.exe qc CMakeFiles\mesh_demo_union.dir/objects.a @CMakeFiles\mesh_demo_union.dir\objects1.rsp
+C:\msys64\mingw64\bin\c++.exe -O3 -DNDEBUG -Wl,--whole-archive CMakeFiles\mesh_demo_union.dir/objects.a -Wl,--no-whole-archive -o mesh_demo_union.exe -Wl,--out-implib,libmesh_demo_union.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\mesh_demo_union.dir\linkLibs.rsp
