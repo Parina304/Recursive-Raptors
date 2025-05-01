@@ -36,11 +36,21 @@ void writeVectorsToCSV(const string& filename, const vector<double>& vec1, const
 
 // Struct to store material properties
 struct MaterialProperties {
-    double thermalConductivity;  // W/m*K
-    double specificHeatCapacity; // J/Kg*K
-    double glassTransitionTemp;  // K
-    double density;              // kg/m^3
+    double thermalConductivity;
+    double specificHeatCapacity;
+    double glassTransitionTemp;
+    double density;
+    double alpha;
+
+    // Now only four parameters
+    MaterialProperties(double k, double cp, double Tg, double rho)
+      : thermalConductivity(k),
+        specificHeatCapacity(cp),
+        glassTransitionTemp(Tg),
+        density(rho),
+        alpha(k/(rho*cp)) {}
 };
+
 
 // Define material properties as constants for different materials
 const MaterialProperties THERMAL_PROTECTION {
@@ -53,7 +63,7 @@ const MaterialProperties THERMAL_PROTECTION {
 const MaterialProperties CARBON_FIBER {
     500,   // Thermal conductivity: 500 W/m*K
     700,   // Specific heat capacity: 700 J/Kg*K
-    350,   // Glass transition temperature: 350K
+    623.15,   // Glass transition temperature: 350K --> 623.15K
     1600      // Density not specified
 };
 
@@ -143,10 +153,7 @@ std::vector<double> thomas_algorithm(const std::vector<double>& a,
 
 // Solve 1D heat conduction through the thermal protection material
 vector<double> calculateTempDistribution(double protectionThickness, double missionDuration, double dt, double dx, double initialExternalTemp) {
-    double k = THERMAL_PROTECTION.thermalConductivity;
-    double rho = THERMAL_PROTECTION.density;
-    double cp = THERMAL_PROTECTION.specificHeatCapacity;
-    double alpha = k / (rho * cp);  // Thermal diffusivity
+    double alpha = THERMAL_PROTECTION.alpha;  // Thermal diffusivity
 
     double thickness = protectionThickness/100; // Convert cm to meters
     int Nx = (int)(thickness / dx) + 1;          // Number of spatial nodes
@@ -176,7 +183,7 @@ vector<double> calculateTempDistribution(double protectionThickness, double miss
 }
 
 // Calculate minimum required thickness of thermal protection at each z along the robot
-vector<double> calculateRequiredProtectionThickness(double missionDuration, double dz) {
+vector<double> calculateRequiredProtectionThickness(double missionDuration, double dz, double dt) {
     bool DEBUG = false; 
     double totalSize = 2.50; // Robot height in meters
     vector<double> insulatorThickness((int)(totalSize/dz)+1, 0.0);
@@ -188,7 +195,6 @@ vector<double> calculateRequiredProtectionThickness(double missionDuration, doub
         double externalTemp = initialTemp(z);
         double maxAllowableTemp = CARBON_FIBER.glassTransitionTemp;
         double dx = 0.001;  // Spatial step size
-        double dt = 1;      // Time step size
         double minThickness = 0.1;  // Minimum test thickness (cm)
         double maxThickness = 50.0; // Maximum allowable thickness (cm)
         double tolerance = 0.001;     // Search tolerance (cm)
@@ -305,13 +311,11 @@ vector<vector<double>> solveMultiLayer(
     }
 
     T[0] = T_ext;
-    int t;
     for (int i = 0; i < timePoints; i++) {
-        t = i*dt;
         vector<double> d = T;
         d[0] = T_ext;
         T = thomas_algorithm(a, b, c, d);
-        T_out[t] = T;
+        T_out[i] = T;  // Safe: using integer loop index
     }
 
     return T_out;
@@ -319,7 +323,7 @@ vector<vector<double>> solveMultiLayer(
 
 
 // New function: Calculate required insulation thickness by solving full multilayer ODE stack
-vector<double> calculateRequiredInsulationThicknessMultiLayer(double missionDuration, double dz, bool normalized) 
+vector<double> calculateRequiredInsulationThicknessMultiLayer(double missionDuration, double dz, double dt, bool normalized) 
 {
     double totalHeight = 2.50;               // robot height in meters
     int Nz = static_cast<int>(totalHeight / dz) + 1;
@@ -331,7 +335,6 @@ vector<double> calculateRequiredInsulationThicknessMultiLayer(double missionDura
         double z = i * dz;
         zVals[i] = z;
         double dx = 0.0001;  // Spatial step size
-        double dt = 1;      // Time step size
 
         // fixed layer thicknesses (cm)
         double cf = carbonThickness(z);
@@ -359,10 +362,16 @@ vector<double> calculateRequiredInsulationThicknessMultiLayer(double missionDura
 
             // index at insulation/carbon interface
             int idx_if = static_cast<int>((mid/100.0) / dx + 0.5);
+            int idx_c = static_cast<int>(((mid+cf)/100.0) / dx + 0.5);
+            int idx_g = static_cast<int>(((mid+cf+gl)/100.0) / dx + 0.5);
+            int idx_s = static_cast<int>(((mid+cf+gl+st)/100.0) / dx + 0.5);
             double T_if = Tdist.back()[idx_if];
+            double T_c = Tdist.back()[idx_c];
+            double T_g = Tdist.back()[idx_g];
+            double T_s = Tdist.back()[idx_s];
 
             // check against carbon fiber limit
-            if (T_if <= CARBON_FIBER.glassTransitionTemp-3) {
+            if (T_if <= CARBON_FIBER.glassTransitionTemp-3 && T_c <=GLUE.glassTransitionTemp-3 && T_g <=STEEL.glassTransitionTemp-3) {
                 hi = mid;
             } else {
                 lo = mid;
@@ -398,6 +407,7 @@ vector<double> calculateRequiredInsulationThicknessMultiLayer(double missionDura
 
 void MakeTimeSolution(double missionDuration, vector<double> insulationThickness, double dt, double dx, double dz, bool normalized)
 {
+    ofstream fout("full_temp_profile_1hr_shorter.csv");
     // 2) Now simulate the full 4‐layer stack at each z for, say, the 1 hr mission:
     int N = insulationThickness.size();  // == totalSize/dz + 1
     for (int i = 0; i < N; ++i) {
@@ -414,7 +424,6 @@ void MakeTimeSolution(double missionDuration, vector<double> insulationThickness
             GLUE,
             STEEL
         };
-
         double T_ext = initialTemp(z);
         // call the multi‐layer solver:
         auto Tdist = solveMultiLayer(
@@ -424,6 +433,27 @@ void MakeTimeSolution(double missionDuration, vector<double> insulationThickness
             T_ext,
             true
         );
+
+        // cout << Tdist.size() << endl;
+        // cout << Tdist[1].size() << endl;
+
+
+        int totalXPoints = static_cast<int>((ins+cf+gl+st)/(100*dx))+1;
+        int totalTPoints = static_cast<int>((missionDuration)/dt)+1;
+        // cout << totalXPoints << endl;
+        // cout << totalTPoints << endl;
+        
+        for (int i = 0; i < totalTPoints; ++i) 
+        {
+            fout << z << ", ";
+            fout << i << ", ";
+            for (int j = 0; j < totalXPoints; ++j) 
+            {
+                fout << Tdist[i][j] << ", ";
+            }
+            fout << "\n";
+        }
+        fout << "\n";
 
         // extract interface indices
         int i_ins_end  = int(((ins+cf)/100.0)/dx);
@@ -454,24 +484,25 @@ void MakeTimeSolution(double missionDuration, vector<double> insulationThickness
                  << "T_STL="  << T_stl_if  << "K\n";
         }
     }
+    std::cout << "Done" << std::endl; 
 }
 // Main function
 int main() {
     double dz = 0.1;    // z‐step in meters
-    double dt = 1.0;    // time step in seconds
+    double dt = 5.0;    // time step in seconds
     double dx = 0.0001;  // x‐step in meters 
-    bool normalized = true;
+    bool normalized = false;
     vector<double> testThickness(static_cast<int>(2.50/dz)+1,18.0);
-
+    std::cout << "3hr Prof change of glass temp to 350K to 623.15K run" << std::endl; 
     // 1) Compute the minimum insulation thickness at each z for 1 hr, 3 hr, 7 hr
-    // auto thick1 = calculateRequiredInsulationThicknessMultiLayer( 3600, dz , normalized);
-    // auto thick3 = calculateRequiredInsulationThicknessMultiLayer(10800, dz, normalized);
-    // auto thick7 = calculateRequiredInsulationThicknessMultiLayer(25200, dz, normalized);
-    auto thick1 = calculateRequiredProtectionThickness(3600, dz);
+    // auto thick1 = calculateRequiredInsulationThicknessMultiLayer( 3600, dz, dt, normalized);
+    auto thick3 = calculateRequiredInsulationThicknessMultiLayer(10800, dz, dt, normalized);
+    // auto thick7 = calculateRequiredInsulationThicknessMultiLayer(25200, dz, dt, normalized);
+    // auto thick1 = calculateRequiredProtectionThickness(3600, dz);
     // auto thick3 = calculateRequiredProtectionThickness(10800, dz);
     // auto thick7 = calculateRequiredProtectionThickness(25200, dz);
 
-    MakeTimeSolution(3600, testThickness, dt, dx, dz, normalized);
+    MakeTimeSolution(10800, thick3, dt, dx, dz, normalized);
 
     std::cin.get();
     return 0;
