@@ -111,8 +111,8 @@ std::string PrependBasePath(const std::string& path) {
     return BASE_PATH + path;
 }
 
-// Load two-column CSV (position,value).
 std::vector<float> loadProfile1(const std::string& fname) {
+
     std::vector<float> vals;
     std::ifstream in(fname);
     if (!in) {
@@ -133,6 +133,7 @@ std::vector<float> loadProfile1(const std::string& fname) {
 
 static void loadThermal(const std::string& fname)
 {
+
     std::ifstream in(fname);
     if (!in) { std::cerr << "[CSV] Cannot open " << fname << "\n"; return; }
     std::string line; std::getline(in, line);
@@ -204,15 +205,40 @@ static glm::vec3 InterpolateColormapToVec3(const xt::xtensor<double, 2>& colorma
     return glm::vec3(r, g, b);
 }
 
+
+
 // --------------------------------------------------------------------------.
 // Mesh loading + gpu buffer upload.
 // --------------------------------------------------------------------------.
-
 bool loadMeshToGPU(const std::string& path)
 {
+    // 0) quick test for “empty file” on disk
+    {
+        std::ifstream test(path);
+        if (!test) {
+            std::cerr << "[OBJ] Cannot open file " << path << "\n";
+            return false;
+        }
+        // peek immediately: if EOF, file has no lines
+        if (test.peek() == std::ifstream::traits_type::eof()) {
+            std::cerr << "[OBJ] File is empty: " << path << "\n";
+            return false;
+        }
+        // else there is at least one character/line
+    }
     // 1) Load into your CPU‐side mesh object.
     if (!mesh.loadOBJ(path)) {
-        std::cerr << "[OBJ] Failed to load " << path << "\n";
+        std::cerr << "[OBJ] Failed to open or parse " << path << "\n";
+        return false;
+    }
+
+    // 1.1) Bail out if file existed but contained no geometry
+    if (mesh.vertices.empty()) {
+        std::cerr << "[OBJ] “" << path << "” contains no vertices\n";
+        return false;
+    }
+    if (mesh.faces.empty()) {
+        std::cerr << "[OBJ] “" << path << "” contains no faces\n";
         return false;
     }
 
@@ -220,23 +246,20 @@ bool loadMeshToGPU(const std::string& path)
     V = mesh.vertices;
     F = mesh.faces;
 
-    // ──────────────────────────────────────────────────────────────────────────.
-    // 3) FILTER OUT BAD FACES (guard against out-of-range indices).
-    std::vector<Face> filteredF;
-    filteredF.reserve(F.size());
-    for (auto& f : F) {
-        if (f.v[0] < V.size() && f.v[1] < V.size() && f.v[2] < V.size()) {
-            filteredF.push_back(f);
-        }
-        else {
-            std::cerr << "[loadMeshToGPU] dropping face with bad indices: ("
-                << f.v[0] << "," << f.v[1] << "," << f.v[2] << ")\n";
+    // 3) Validate indices – if any face references out-of-range vertex, abort.
+    size_t vertCount = V.size();
+    for (size_t i = 0; i < F.size(); ++i) {
+        const Face& f = F[i];
+        if (f.v[0] >= vertCount || f.v[1] >= vertCount || f.v[2] >= vertCount) {
+            std::cerr << "[loadMeshToGPU] ERROR: face #" << i
+                << " has invalid index ("
+                << f.v[0] << "," << f.v[1] << "," << f.v[2]
+                << ") >= vertex count " << vertCount << "\n";
+            return false;
         }
     }
-    F.swap(filteredF);
-    // ──────────────────────────────────────────────────────────────────────────.
 
-    // 4) Rebuild your index buffer from the sanitized face list.
+    // 4) Build index buffer…
     I.clear();
     I.reserve(F.size() * 3);
     for (auto& f : F) {
@@ -245,36 +268,33 @@ bool loadMeshToGPU(const std::string& path)
         I.push_back(f.v[2]);
     }
 
-    // 5) (Re)upload VBO, CBO, EBO exactly as before….
+    // 5) (Re)upload VBO/CBO/EBO exactly as before…
     if (VAO == 0) {
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
         glGenBuffers(1, &CBO);
         glGenBuffers(1, &EBO);
     }
-
     glBindVertexArray(VAO);
-
-    // vertex positions.
+    // positions
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
     glBufferData(GL_ARRAY_BUFFER, V.size() * sizeof(glm::vec3), V.data(), GL_STATIC_DRAW);
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
     glEnableVertexAttribArray(0);
-
-    // default grey colours.
-    std::vector<glm::vec3> defCols(V.size(), glm::vec3(0.8f));
+    // colors
+    std::vector<glm::vec3> cols(V.size(), glm::vec3(0.8f));
     glBindBuffer(GL_ARRAY_BUFFER, CBO);
-    glBufferData(GL_ARRAY_BUFFER, defCols.size() * sizeof(glm::vec3), defCols.data(), GL_DYNAMIC_DRAW);
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+    glBufferData(GL_ARRAY_BUFFER, cols.size() * sizeof(glm::vec3), cols.data(), GL_DYNAMIC_DRAW);
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, (void*)0);
     glEnableVertexAttribArray(1);
-
-    // triangle indices.
+    // elements
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, I.size() * sizeof(unsigned int), I.data(), GL_STATIC_DRAW);
-
     glBindVertexArray(0);
+
     return true;
 }
+
 
 void frameMeshOnLoad()
 {
