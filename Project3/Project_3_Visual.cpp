@@ -48,6 +48,7 @@
 // Enumerations.
 // --------------------------------------------------------------------------.
 
+const std::string sim_time = "1";
 // 3 visual styles (shading) that apply no matter which mesh is loaded.
 enum ViewMode { MODE_FACE = 0, MODE_WIREFRAME, MODE_MATERIAL };
 static ViewMode currentViewMode = MODE_FACE;
@@ -432,7 +433,7 @@ GLuint createProgram()
     glDeleteShader(fs);
     return p;
 }
-const std::string OBJ_TPS = PrependBasePath("assets/obj/TPS_3_hr.obj");
+const std::string OBJ_TPS = PrependBasePath("assets/obj/TPS_" + sim_time + "_hr.obj");
 
 // --------------------------------------------------------------------------.
 // Glfw callbacks.
@@ -557,7 +558,7 @@ int main()
     carbon = loadProfile1(PrependBasePath("assets/csv/carbon_thickness.csv"));
     glue = loadProfile1(PrependBasePath("assets/csv/glue_thickness.csv"));
     steel = loadProfile1(PrependBasePath("assets/csv/steel_thickness.csv"));
-    loadThermal(PrependBasePath("assets/csv/Thickness_3_hr.csv"));
+    loadThermal(PrependBasePath("assets/csv/Thickness_" + sim_time + "_hr.csv"));
 
     // Check material vectors
     if (carbon.empty() || glue.empty() || steel.empty()) {
@@ -602,7 +603,7 @@ int main()
     // ----------------------------------------------------------------- obj ----.
     const std::string OBJ_3D = PrependBasePath("assets/obj/humanoid_robot.obj");
     const std::string OBJ_2D = PrependBasePath("assets/obj/humanoid_robot_2d.obj");
-    const std::string OBJ_TPS = PrependBasePath("assets/obj/TPS_3_hr.obj");
+    const std::string OBJ_TPS = PrependBasePath("assets/obj/TPS_" + sim_time + "_hr.obj");
 
     if (!loadMeshToGPU(OBJ_3D)) return 1;          // start with 3‑D model
 
