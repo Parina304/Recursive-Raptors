@@ -105,7 +105,7 @@ vector<int> pointsPerLayer = {10, 10, 10, 10}; // resolution per layer
 ```
 ---
 
-## 🧪 Testing
+## Testing
 
 Compile with:
 
