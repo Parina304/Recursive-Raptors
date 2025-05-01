@@ -395,7 +395,7 @@ GLuint createProgram()
     glDeleteShader(fs);
     return p;
 }
-const std::string OBJ_TPS = PrependBasePath("assets/obj/humanoid_robot_3d_thickened_scaled_3_hr.obj");
+const std::string OBJ_TPS = PrependBasePath("assets/obj/TPS_3_hr.obj");
 
 // --------------------------------------------------------------------------.
 // Glfw callbacks.
