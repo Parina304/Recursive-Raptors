@@ -28,6 +28,10 @@ bool Mesh::loadOBJ(const std::string& filePath) {
     // (We ignore texture coords and normals in this loader for simplicity)
     minX = minY = minZ = 1e9f;
     maxX = maxY = maxZ = -1e9f;
+
+    bool has_vertices = false;
+    bool has_faces = false;
+    
     while (std::getline(file, line)) {
         line = trim(line);
         if (line.empty() || line[0] == '#') continue;
@@ -40,6 +44,7 @@ bool Mesh::loadOBJ(const std::string& filePath) {
                     throw std::runtime_error("Invalid vertex data");
                 }
                 tempVerts.push_back(v);
+                has_vertices = true;
                 // update bounds
                 if (v.x < minX) minX = v.x;
                 if (v.x > maxX) maxX = v.x;
@@ -115,6 +120,7 @@ bool Mesh::loadOBJ(const std::string& filePath) {
                     }
                     faces.push_back(face);
                 }
+                has_faces = true;
             } catch (const std::exception& e){
                 std::cerr << "WARNING: Skipping invalid face line: " << line << " (" << e.what() << ")" << std::endl;
                 continue;
@@ -123,6 +129,14 @@ bool Mesh::loadOBJ(const std::string& filePath) {
         // (We ignore other OBJ statements like mtllib, normals, etc., for brevity)
     }
     file.close();
+    if (!has_faces){
+        std::cerr << "ERROR: No vertices found in OBJ file " << filePath << std::endl;
+        return false;
+    }
+    if (!has_vertices){
+        std::cerr << "ERROR: No faces found in OBJ file " << filePath << std::endl;
+        return false;
+    }
     // Move unique vertices into Mesh::vertices
     vertices = std::move(tempVerts);
     // Determine initial global minTemp and maxTemp
